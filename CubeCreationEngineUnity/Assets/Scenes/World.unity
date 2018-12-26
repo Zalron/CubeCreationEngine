@@ -284,6 +284,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cubeMaterial: {fileID: 2100000, guid: f47f4010c3f597a4ba38951d2a2fdae1, type: 2}
+  bType: 1
 --- !u!4 &1957219492
 Transform:
   m_ObjectHideFlags: 0
