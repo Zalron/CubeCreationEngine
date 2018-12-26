@@ -266,7 +266,7 @@ GameObject:
   - component: {fileID: 1957219492}
   - component: {fileID: 1957219491}
   m_Layer: 0
-  m_Name: Quad
+  m_Name: Chunk
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -284,7 +284,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cubeMaterial: {fileID: 2100000, guid: f47f4010c3f597a4ba38951d2a2fdae1, type: 2}
-  bType: 1
 --- !u!4 &1957219492
 Transform:
   m_ObjectHideFlags: 0
