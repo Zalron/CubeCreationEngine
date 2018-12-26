@@ -10,7 +10,7 @@ public class Block
     }
     public enum BlockType // an enum that declares all of the block types in the game
     {
-        GRASS, DIRT, STONE
+        GRASS, DIRT, STONE, AIR
     }
     public BlockType bType;
     public bool isSolid;
@@ -29,7 +29,14 @@ public class Block
         parent = p;
         position = pos;
         cubeMaterial = c;
-        isSolid = true;
+        if (bType == BlockType.AIR)
+        {
+            isSolid = false;
+        }
+        else
+        {
+            isSolid = true;
+        }
     }
     void CreateQuad(Cubeside side) // the function to create the cubes
     {
@@ -128,8 +135,8 @@ public class Block
         quad.transform.parent = parent.transform;
         MeshFilter meshFilter = (MeshFilter)quad.AddComponent(typeof(MeshFilter));
         meshFilter.mesh = mesh;
-        MeshRenderer renderer = quad.AddComponent(typeof(MeshRenderer)) as MeshRenderer;
-        renderer.material = cubeMaterial;
+        //MeshRenderer renderer = quad.AddComponent(typeof(MeshRenderer)) as MeshRenderer;
+        //renderer.material = cubeMaterial;
     }
     public bool HasSolidNeighbour(int x, int y, int z) // checks if the block as a solid neighbour so the engine dosn't draw unnesseary faces
     {
@@ -143,6 +150,10 @@ public class Block
     }
     public void Draw() // Draws the cube by creating the quads 
     {
+        if (bType == BlockType.AIR)
+        {
+            return;
+        }
         if (!HasSolidNeighbour((int)position.x,(int)position.y,(int)position.z + 1))
         {
             CreateQuad(Cubeside.FRONT);
