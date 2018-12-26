@@ -14,21 +14,21 @@ public class Block
     }
     public BlockType bType;
     public bool isSolid;
+    Chunk owner;
     GameObject parent;
     Vector3 position;
-    public Material cubeMaterial;
     Vector2[,] blockUVs = {
         { new Vector2 (0.125f,0.375f), new Vector2 (0.1875f,0.375f), new Vector2 (0.125f,0.4375f), new Vector2 (0.1875f, 0.4375f)}, //Grass Top
         { new Vector2 (0.1875f,0.9375f), new Vector2 (0.25f,0.9375f), new Vector2 (0.1875f,1.0f), new Vector2 (0.25f,1.0f)}, //Grass Sides
         { new Vector2 (0.125f,0.9375f), new Vector2 (0.1875f,0.9375f), new Vector2 (0.125f,1.0f), new Vector2 (0.1875f,1.0f)}, //Dirt 
         { new Vector2 (0,0.875f), new Vector2 (0.0625f,0.875f), new Vector2 (0,0.9375f), new Vector2 (0.0625f,0.9375f)} //Stone
     };
-    public Block(BlockType b, Vector3 pos, GameObject p, Material c) // A constructor for the blocks 
+    public Block(BlockType b, Vector3 pos, GameObject p, Chunk o) // A constructor for the blocks 
     {
         bType = b;
+        owner = o;
         parent = p;
         position = pos;
-        cubeMaterial = c;
         if (bType == BlockType.AIR)
         {
             isSolid = false;
@@ -135,17 +135,16 @@ public class Block
         quad.transform.parent = parent.transform;
         MeshFilter meshFilter = (MeshFilter)quad.AddComponent(typeof(MeshFilter));
         meshFilter.mesh = mesh;
-        //MeshRenderer renderer = quad.AddComponent(typeof(MeshRenderer)) as MeshRenderer;
-        //renderer.material = cubeMaterial;
     }
     public bool HasSolidNeighbour(int x, int y, int z) // checks if the block as a solid neighbour so the engine dosn't draw unnesseary faces
     {
-        Block[,,] chunks = parent.GetComponent<Chunk>().chunkData;
+        Block[,,] chunks;
+        chunks = owner.chunkData;
         try
         {
             return chunks[x, y, z].isSolid;
         }
-        catch (System.IndexOutOfRangeException ex) { }
+        catch (System.IndexOutOfRangeException) { }
         return false;
     }
     public void Draw() // Draws the cube by creating the quads 
