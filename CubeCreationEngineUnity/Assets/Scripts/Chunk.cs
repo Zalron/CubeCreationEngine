@@ -5,9 +5,11 @@ namespace CubeCreationEngine.Core
 {
     public class Chunk
     {
+        public enum ChunkStatus{DRAW,DONE,KEEP}
         public Material cubeMaterial;
         public Block[,,] chunkData;
         public GameObject chunk;
+        public ChunkStatus status;
         void BuildChunk() // Creating the chunks asynchronous to the normal unity logic
         {
             // Declaring the chunkData array
@@ -55,6 +57,7 @@ namespace CubeCreationEngine.Core
                     }
                 }
             }
+            status = ChunkStatus.DRAW;
         }
         public void DrawChunk()
         {
