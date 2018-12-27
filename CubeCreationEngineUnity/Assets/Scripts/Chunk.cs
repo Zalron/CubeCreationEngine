@@ -70,8 +70,11 @@ namespace CubeCreationEngine.Core
                 }
             }
             CombineQuads();
+            // creating and adding a meshcollider component to the individual chunks
+            MeshCollider collider = chunk.gameObject.AddComponent(typeof(MeshCollider)) as MeshCollider;
+            collider.sharedMesh = chunk.transform.GetComponent<MeshFilter>().mesh;
         }
-        public Chunk(Vector3 position, Material c)
+        public Chunk(Vector3 position, Material c) // constructor for the chunks
         {
             chunk = new GameObject(World.BuildChunkName(position));
             chunk.transform.position = position;
