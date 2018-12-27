@@ -20,7 +20,12 @@ namespace CubeCreationEngine.Core
                     for (int x = 0; x < World.chunkSize; x++)
                     {
                         Vector3 pos = new Vector3(x, y, z);
-                        if (Random.Range(0, 100) < 50)
+                        // declaring the worldx/y/z variable so that the blocks know where they are in the world
+                        int worldX = (int)(x + chunk.transform.position.x);
+                        int worldY = (int)(y + chunk.transform.position.y);
+                        int worldZ = (int)(z + chunk.transform.position.z);
+                        // generates the blocks in the chunks into a height map 
+                        if (worldY <= Utilities.GenerateHeight(worldX,worldZ))
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
                         }

@@ -8,7 +8,7 @@ namespace CubeCreationEngine.Core
         public Material textureAtlas; // the texture that is going to be aplided to the chunks
         public static int columnHeight = 16; // the height of the world
         public static int chunkSize = 16; // the size of the chunk
-        public static int worldSize = 2; // size of the world
+        public static int worldSize = 16; // size of the world
         public static Dictionary<string, Chunk> chunks; // a disctionary of all of the chunks
         public static string BuildChunkName(Vector3 v) // assigning a name to a chunk
         {
