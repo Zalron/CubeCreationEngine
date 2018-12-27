@@ -1,8 +1,34 @@
-﻿using System.Collections;
+﻿using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 namespace CubeCreationEngine.Core
 {
+    [Serializable]
+    class BlockData // a Serializable class that will convert block data into binary
+    {
+        public Block.BlockType[,,] matrix; // a matrix that holds the block type and position in the chunk
+        public BlockData() // empty constructor that is required
+        {
+        }
+        public BlockData(Block[,,] b) // a constructor that we can pass through chunk data 
+            // looping through the block data to get a matrix of the block type and position
+        {
+            matrix = new Block.BlockType[World.chunkSize, World.chunkSize, World.chunkSize];
+            for (int z = 0; z < World.chunkSize; z++)
+            {
+                for (int y = 0; y < World.chunkSize; y++)
+                {
+                    for (int x = 0; x < World.chunkSize; x++)
+                    {
+                        matrix[x, y, z] = b[x, y, z].bType;
+                    }
+                }
+            }
+        }
+    }
     public class Chunk
     {
         public enum ChunkStatus{DRAW,DONE,KEEP}
@@ -11,9 +37,45 @@ namespace CubeCreationEngine.Core
         public GameObject chunk;
         public ChunkStatus status;
         public float touchedTime;
+        BlockData bd;
+        string BuildChunkFileName(Vector3 v) // builds a chunk file name for each chunk 
+        {
+            return Application.persistentDataPath + "/savedata/Chunk_" + (int)v.x + "_" + (int)v.y + "_" + (int)v.z + "_" + World.chunkSize + "_" + World.radius + ".dat";
+        }
+        bool Load()// read data from file
+        {
+            string chunkFile = BuildChunkFileName(chunk.transform.position); // contructs the file name
+            if (File.Exists(chunkFile)) // if we have saved a File
+            {
+                BinaryFormatter bf = new BinaryFormatter();
+                FileStream file = File.Open(chunkFile, FileMode.Open);
+                bd = new BlockData();
+                bd = (BlockData) bf.Deserialize(file); // putting it back into bd
+                file.Close();
+                //Debug.Log("Loading chunk from file: " + chunkFile);
+                return true;
+            }
+            return false;
+        }
+        public void Save() // write data to file
+        {
+            string chunkFile = BuildChunkFileName(chunk.transform.position); // contructs the file name
+            if (File.Exists(chunkFile)) // if we have saved a File
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(chunkFile));
+            }
+            BinaryFormatter bf = new BinaryFormatter();
+            FileStream file = File.Open(chunkFile, FileMode.OpenOrCreate);
+            bd = new BlockData(chunkData);
+            bf.Serialize(file,bd); // writing the data
+            file.Close();
+            //Debug.Log("Saving chunk from file: " + chunkFile);
+        }
         void BuildChunk() // Creating the chunks asynchronous to the normal unity logic
         {
-            touchedTime = Time.time;
+            bool dataFromFile = false;
+            dataFromFile = Load(); // first we load data from a save file
+            //touchedTime = Time.time;
             // Declaring the chunkData array
             chunkData = new Block[World.chunkSize, World.chunkSize, World.chunkSize];
             //Creating the blocks
@@ -28,6 +90,11 @@ namespace CubeCreationEngine.Core
                         int worldX = (int)(x + chunk.transform.position.x);
                         int worldY = (int)(y + chunk.transform.position.y);
                         int worldZ = (int)(z + chunk.transform.position.z);
+                        if (dataFromFile) // before any chunks are created we check if there is a file to load data from
+                        {
+                            chunkData[x, y, z] = new Block(bd.matrix[x, y, z], pos, chunk.gameObject, this);
+                            continue;
+                        }
                         // generates the blocks in the chunks into a height map 
                         if (Utilities.fBM3D(worldX, worldY ,worldZ, Utilities.caveSmooth, Utilities.caveOctaves) < 0.42f)
                         {

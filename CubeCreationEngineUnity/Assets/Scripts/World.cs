@@ -20,6 +20,7 @@ namespace CubeCreationEngine.Core
         CoroutineQueue queue;
         public static uint MaxCorourtines = 1000; // must increase with the size of the radius
         public Vector3 lastBuildPos;// store position of player
+        public float lastBuildTime;
         public static string BuildChunkName(Vector3 v) // assigning a name to a chunk
         {
             return (int)v.x + "_" + (int)v.y + "_" + (int)v.z;
@@ -92,6 +93,8 @@ namespace CubeCreationEngine.Core
                 if (chunks.TryGetValue(n, out c))
                 {
                     Destroy(c.chunk);
+                    c.Save(); // saves the old chunk to the file
+                    chunks.TryRemove(n, out c);
                     yield return null;
                 }
             }
@@ -99,6 +102,7 @@ namespace CubeCreationEngine.Core
         public void BuildNearPlayer()
         {
             StopCoroutine("BuildRecursiveWorld");
+            lastBuildTime = Time.time;
             queue.Run(BuildRecursiveWorld((int)(player.transform.position.x / chunkSize), (int)(player.transform.position.y / chunkSize), (int)(player.transform.position.z / chunkSize), radius));
         }
         void Start() // Use this for initialization
