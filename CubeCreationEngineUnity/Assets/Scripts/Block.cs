@@ -11,19 +11,28 @@ namespace CubeCreationEngine.Core
         }
         public enum BlockType // an enum that declares all of the block types in the game
         {
-            GRASS, DIRT, STONE, AIR
+            GRASS, DIRT, STONE, DIAMOND, AIR 
         }
         public BlockType bType;
         public bool isSolid;
         Chunk owner;
         GameObject parent;
         Vector3 position;
-        Vector2[,] blockUVs = {
-        { new Vector2 (0.125f,0.375f), new Vector2 (0.1875f,0.375f), new Vector2 (0.125f,0.4375f), new Vector2 (0.1875f, 0.4375f)}, //Grass Top
-        { new Vector2 (0.1875f,0.9375f), new Vector2 (0.25f,0.9375f), new Vector2 (0.1875f,1.0f), new Vector2 (0.25f,1.0f)}, //Grass Sides
-        { new Vector2 (0.125f,0.9375f), new Vector2 (0.1875f,0.9375f), new Vector2 (0.125f,1.0f), new Vector2 (0.1875f,1.0f)}, //Dirt 
-        { new Vector2 (0,0.875f), new Vector2 (0.0625f,0.875f), new Vector2 (0,0.9375f), new Vector2 (0.0625f,0.9375f)} //Stone
-    };
+        Vector2[,] blockGrassTopUVs = {
+        { new Vector2 (0.125f,0.375f), new Vector2 (0.1875f,0.375f)},{new Vector2 (0.125f,0.4375f), new Vector2 (0.1875f, 0.4375f) }, //Grass Top
+        };
+        Vector2[,] blockGrassSideUVs = {
+        { new Vector2 (0.1875f,0.9375f), new Vector2 (0.25f,0.9375f)},{ new Vector2 (0.1875f,1.0f), new Vector2 (0.25f,1.0f)}, //Grass Sides
+        };
+        Vector2[,] blockDirtUVs = {
+        { new Vector2 (0.125f,0.9375f), new Vector2 (0.1875f,0.9375f)},{ new Vector2 (0.125f,1.0f), new Vector2 (0.1875f,1.0f)}, //Dirt 
+        };
+        Vector2[,] blockStoneUVs = {
+        { new Vector2 (0,0.875f), new Vector2 (0.0625f,0.875f)},{ new Vector2 (0,0.9375f), new Vector2 (0.0625f,0.9375f)}, //Stone
+        };
+        Vector2[,] blockDiamondUVs = {
+        { new Vector2 (0.125f,0.75f), new Vector2 (0.1875f,0.75f)},{ new Vector2 (0.125f,0.8125f), new Vector2 (0.1875f,0.8125f)} //Diamond
+        };
         public Block(BlockType b, Vector3 pos, GameObject p, Chunk o) // A constructor for the blocks 
         {
             bType = b;
@@ -54,27 +63,55 @@ namespace CubeCreationEngine.Core
             Vector2 uv10;
             Vector2 uv01;
             Vector2 uv11;
-            // assigning the texture from the atlas
-            if (bType == BlockType.GRASS && side == Cubeside.TOP)
+            // assigning the textures from the atlas
+            if (bType == BlockType.GRASS && side == Cubeside.TOP) // grass
             {
-                uv00 = blockUVs[0, 0];
-                uv10 = blockUVs[0, 1];
-                uv01 = blockUVs[0, 2];
-                uv11 = blockUVs[0, 3];
+                uv00 = blockGrassTopUVs[0, 0];
+                uv10 = blockGrassTopUVs[0, 1];
+                uv01 = blockGrassTopUVs[1, 0];
+                uv11 = blockGrassTopUVs[1, 1];
+            }
+            else if (bType == BlockType.GRASS && side == Cubeside.LEFT && side == Cubeside.RIGHT && side == Cubeside.FRONT && side == Cubeside.BACK)
+            {
+                uv00 = blockGrassSideUVs[0, 0];
+                uv10 = blockGrassSideUVs[0, 1];
+                uv01 = blockGrassSideUVs[1, 0];
+                uv11 = blockGrassSideUVs[1, 1];
             }
             else if (bType == BlockType.GRASS && side == Cubeside.BOTTOM)
             {
-                uv00 = blockUVs[(int)(BlockType.DIRT + 1), 0];
-                uv10 = blockUVs[(int)(BlockType.DIRT + 1), 1];
-                uv01 = blockUVs[(int)(BlockType.DIRT + 1), 2];
-                uv11 = blockUVs[(int)(BlockType.DIRT + 1), 3];
+                uv00 = blockDirtUVs[0, 0];
+                uv10 = blockDirtUVs[0, 1];
+                uv01 = blockDirtUVs[1, 0];
+                uv11 = blockDirtUVs[1, 1];
+            }
+            else if (bType == BlockType.DIRT) //Dirt
+            {
+                uv00 = blockDirtUVs[0, 0];
+                uv10 = blockDirtUVs[0, 1];
+                uv01 = blockDirtUVs[1, 0];
+                uv11 = blockDirtUVs[1, 1];
+            }
+            else if (bType == BlockType.STONE) // Stone
+            {
+                uv00 = blockStoneUVs[0, 0];
+                uv10 = blockStoneUVs[0, 1];
+                uv01 = blockStoneUVs[1, 0];
+                uv11 = blockStoneUVs[1, 1];
+            }
+            else if (bType == BlockType.DIAMOND) // Diamond
+            {
+                uv00 = blockDiamondUVs[0, 0];
+                uv10 = blockDiamondUVs[0, 1];
+                uv01 = blockDiamondUVs[1, 0];
+                uv11 = blockDiamondUVs[1, 1];
             }
             else
             {
-                uv00 = blockUVs[(int)(bType + 1), 0];
-                uv10 = blockUVs[(int)(bType + 1), 1];
-                uv01 = blockUVs[(int)(bType + 1), 2];
-                uv11 = blockUVs[(int)(bType + 1), 3];
+                uv00 = blockDirtUVs[0, 0];
+                uv10 = blockDirtUVs[0, 1];
+                uv01 = blockDirtUVs[1, 0];
+                uv11 = blockDirtUVs[1, 1];
             }
             //all possible Verts
             Vector3 p0 = new Vector3(-0.5f, -0.5f, 0.5f);

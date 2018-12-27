@@ -25,9 +25,20 @@ namespace CubeCreationEngine.Core
                         int worldY = (int)(y + chunk.transform.position.y);
                         int worldZ = (int)(z + chunk.transform.position.z);
                         // generates the blocks in the chunks into a height map 
-                        if (worldY <= Utilities.GenerateStoneHeight(worldX,worldZ))
+                        if (Utilities.fBM3D(worldX, worldY ,worldZ, Utilities.caveSmooth, Utilities.caveOctaves) < 0.42f)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
+                            chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
+                        }
+                        else if (worldY <= Utilities.GenerateStoneHeight(worldX,worldZ))
+                        {
+                            if (Utilities.fBM3D(worldX, worldY, worldZ, 0.01f, 2) < Utilities.DiamondChance && worldY < Utilities.DiamondSpawnHeight)
+                            {
+                                chunkData[x, y, z] = new Block(Block.BlockType.DIAMOND, pos, chunk.gameObject, this);
+                            }
+                            else
+                            {
+                                chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
+                            }
                         }
                         else if (worldY == Utilities.GenerateDirtHeight(worldX, worldZ))
                         {
