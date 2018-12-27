@@ -79,12 +79,4 @@ public class Chunk
             GameObject.Destroy(quad.gameObject);
         }
     }
-	void Start () // Use this for initialization
-    {
-        BuildChunk();
-	}
-	void Update () // Update is called once per frame
-    {
-		
-	}
 }
