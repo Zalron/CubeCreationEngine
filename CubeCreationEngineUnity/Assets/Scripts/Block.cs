@@ -5,10 +5,7 @@ namespace CubeCreationEngine.Core
 {
     public class Block
     {
-        enum Cubeside // an enum to handle all of the sides of the cubes
-        {
-            BOTTOM, TOP, LEFT, RIGHT, FRONT, BACK
-        }
+        enum Cubeside { BOTTOM, TOP, LEFT, RIGHT, FRONT, BACK }// an enum to handle all of the sides of the cubes
         public enum BlockType // an enum that declares all of the block types in the game
         {
             GRASS, DIRT, STONE, DIAMOND, AIR 

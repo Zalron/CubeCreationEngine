@@ -16,8 +16,9 @@ namespace CubeCreationEngine.Core
         public static int radius = 6;
         public static ConcurrentDictionary<string, Chunk> chunks; // a dictionary of all of the chunks
         public static bool firstbuild = true;
+        public static List<string> toRemove = new List<string>(); // a list to remove the chunks that are not needed from the dictionary
         CoroutineQueue queue;
-        public static uint MaxCorourtines = 1000;
+        public static uint MaxCorourtines = 1000; // must increase with the size of the radius
         public Vector3 lastBuildPos;// store position of player
         public static string BuildChunkName(Vector3 v) // assigning a name to a chunk
         {
@@ -75,8 +76,25 @@ namespace CubeCreationEngine.Core
                 {
                     c.Value.DrawChunk();
                 }
+                if (c.Value.chunk && Vector3.Distance(player.transform.position, c.Value.chunk.transform.position) > radius*chunkSize) // finds the chunks outside the players radius and sends them to the ToRemove list
+                {
+                    toRemove.Add(c.Key);
+                }
             }
             yield return null;
+        }
+        IEnumerator RemoveOldChunks()
+        {
+            for (int i = 0; i < toRemove.Count; i++)
+            {
+                string n = toRemove[i];
+                Chunk c;
+                if (chunks.TryGetValue(n, out c))
+                {
+                    Destroy(c.chunk);
+                    yield return null;
+                }
+            }
         }
         public void BuildNearPlayer()
         {
@@ -115,6 +133,7 @@ namespace CubeCreationEngine.Core
                 firstbuild = false;
             }
             queue.Run(DrawChunks());
+            queue.Run(RemoveOldChunks());
         }
     }
 }
