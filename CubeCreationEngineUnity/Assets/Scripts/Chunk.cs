@@ -25,7 +25,15 @@ namespace CubeCreationEngine.Core
                         int worldY = (int)(y + chunk.transform.position.y);
                         int worldZ = (int)(z + chunk.transform.position.z);
                         // generates the blocks in the chunks into a height map 
-                        if (worldY <= Utilities.GenerateHeight(worldX,worldZ))
+                        if (worldY <= Utilities.GenerateStoneHeight(worldX,worldZ))
+                        {
+                            chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
+                        }
+                        else if (worldY == Utilities.GenerateDirtHeight(worldX, worldZ))
+                        {
+                            chunkData[x, y, z] = new Block(Block.BlockType.GRASS, pos, chunk.gameObject, this);
+                        }
+                        else if (worldY < Utilities.GenerateDirtHeight(worldX, worldZ))
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
                         }

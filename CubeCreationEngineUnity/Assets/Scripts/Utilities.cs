@@ -5,13 +5,24 @@ namespace CubeCreationEngine.Core
 {
     public class Utilities
     {
-        static int maxHeight = 100;
-        static float smooth = 0.01f;
-        static int octaves = 4;
-        static float persistence = 0.5f;
-        public static int GenerateHeight(float x, float z) // generates the height map using fractal brownian motion
+        // variables used for dirt height generation
+        static int maxDirtHeight = 100;
+        static float dirtSmooth = 0.01f;
+        static int dirtOctaves = 4;
+        static float dirtPersistence = 0.5f;
+        // varibles used for stone height generation
+        static int maxStoneHeight = 95;
+        static float stoneSmooth = 0.02f;
+        static int stoneOctaves = 5;
+        static float stonePersistence = 0.5f;
+        public static int GenerateStoneHeight(float x, float z) // generates the stone height map using fractal brownian motion
         {
-            float height = Map(0, maxHeight, 0, 1, fBM(x * smooth, z * smooth, octaves, persistence));
+            float height = Map(0, maxStoneHeight, 0, 1, fBM(x * stoneSmooth, z * stoneSmooth, stoneOctaves, stonePersistence));
+            return (int)height;
+        }
+        public static int GenerateDirtHeight(float x, float z) // generates the dirt height map using fractal brownian motion
+        {
+            float height = Map(0, maxDirtHeight, 0, 1, fBM(x * dirtSmooth, z * dirtSmooth, dirtOctaves, dirtPersistence));
             return (int)height;
         }
         static float Map(float newmin, float newmax, float originalmin, float originalmax, float value) //generates a map for the fractal brownian motion to map on to
@@ -28,7 +39,7 @@ namespace CubeCreationEngine.Core
             {
                 total += Mathf.PerlinNoise(x * frequency, z * frequency) * amplitude;
                 maxValue += amplitude;
-                amplitude *= persistence;
+                amplitude *= dirtPersistence;
                 frequency *= 2;
             }
             return total / maxValue;
