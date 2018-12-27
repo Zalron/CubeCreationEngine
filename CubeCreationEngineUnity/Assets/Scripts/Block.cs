@@ -71,7 +71,28 @@ namespace CubeCreationEngine.Core
                 uv01 = blockGrassTopUVs[1, 0];
                 uv11 = blockGrassTopUVs[1, 1];
             }
-            else if (bType == BlockType.GRASS && side == Cubeside.LEFT && side == Cubeside.RIGHT && side == Cubeside.FRONT && side == Cubeside.BACK)
+            else if (bType == BlockType.GRASS && side == Cubeside.LEFT)
+            {
+                uv00 = blockGrassSideUVs[0, 0];
+                uv10 = blockGrassSideUVs[0, 1];
+                uv01 = blockGrassSideUVs[1, 0];
+                uv11 = blockGrassSideUVs[1, 1];
+            }
+            else if (bType == BlockType.GRASS && side == Cubeside.RIGHT)
+            {
+                uv00 = blockGrassSideUVs[0, 0];
+                uv10 = blockGrassSideUVs[0, 1];
+                uv01 = blockGrassSideUVs[1, 0];
+                uv11 = blockGrassSideUVs[1, 1];
+            }
+            else if (bType == BlockType.GRASS && side == Cubeside.FRONT)
+            {
+                uv00 = blockGrassSideUVs[0, 0];
+                uv10 = blockGrassSideUVs[0, 1];
+                uv01 = blockGrassSideUVs[1, 0];
+                uv11 = blockGrassSideUVs[1, 1];
+            }
+            else if (bType == BlockType.GRASS && side == Cubeside.BACK)
             {
                 uv00 = blockGrassSideUVs[0, 0];
                 uv10 = blockGrassSideUVs[0, 1];

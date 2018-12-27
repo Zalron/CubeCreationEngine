@@ -10,8 +10,10 @@ namespace CubeCreationEngine.Core
         public Block[,,] chunkData;
         public GameObject chunk;
         public ChunkStatus status;
+        public float touchedTime;
         void BuildChunk() // Creating the chunks asynchronous to the normal unity logic
         {
+            touchedTime = Time.time;
             // Declaring the chunkData array
             chunkData = new Block[World.chunkSize, World.chunkSize, World.chunkSize];
             //Creating the blocks
@@ -54,10 +56,10 @@ namespace CubeCreationEngine.Core
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
                         }
+                        status = ChunkStatus.DRAW;
                     }
                 }
             }
-            status = ChunkStatus.DRAW;
         }
         public void DrawChunk()
         {
@@ -76,6 +78,7 @@ namespace CubeCreationEngine.Core
             // creating and adding a meshcollider component to the individual chunks
             MeshCollider collider = chunk.gameObject.AddComponent(typeof(MeshCollider)) as MeshCollider;
             collider.sharedMesh = chunk.transform.GetComponent<MeshFilter>().mesh;
+            status = ChunkStatus.DONE;
         }
         public Chunk(Vector3 position, Material c) // constructor for the chunks
         {
