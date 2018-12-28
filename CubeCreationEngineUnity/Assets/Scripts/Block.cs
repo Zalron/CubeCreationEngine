@@ -45,6 +45,18 @@ namespace CubeCreationEngine.Core
                 isSolid = true;
             }
         }
+        public void SetType(BlockType b)
+        {
+            bType = b;
+            if (bType == BlockType.AIR)
+            {
+                isSolid = false;
+            }
+            else
+            {
+                isSolid = true;
+            }
+        }
         void CreateQuad(Cubeside side) // the function to create the cubes
         {
             // creates the mesh component on the object
