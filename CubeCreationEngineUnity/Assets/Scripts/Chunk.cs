@@ -37,6 +37,7 @@ namespace CubeCreationEngine.Core
         public GameObject chunk;
         public ChunkStatus status;
         public float touchedTime;
+        public ChunkMB mb;
         BlockData bd;
         string BuildChunkFileName(Vector3 v) // builds a chunk file name for each chunk 
         {
@@ -96,30 +97,35 @@ namespace CubeCreationEngine.Core
                             continue;
                         }
                         // generates the blocks in the chunks into a height map 
+                        int surfaceHeight = Utilities.GenerateDirtHeight(worldX,worldZ);
                         if (Utilities.fBM3D(worldX, worldY, worldZ, Utilities.caveSmooth, Utilities.caveOctaves) < 0.42f)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
                         }
+                        else if (worldY == 0)
+                        {
+                            chunkData[x, y, z] = new Block(Block.BlockType.BEDROCK, pos, chunk.gameObject, this);
+                        }
                         else if (worldY <= Utilities.GenerateStoneHeight(worldX, worldZ))
                         {
-                            if (Utilities.fBM3D(worldX, worldY, worldZ, 0.01f, 2) < Utilities.caveSmooth && worldY < Utilities.maxStoneSpawnHeight)
-                            {
-                                chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
-                            }
-                            else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.01f, 2) < Utilities.DiamondChance && worldY < Utilities.maxDiamondSpawnHeight)
+                            if (Utilities.fBM3D(worldX, worldY, worldZ, 0.01f, 2) < 0.4f && worldY < Utilities.maxDiamondSpawnHeight)
                             {
                                 chunkData[x, y, z] = new Block(Block.BlockType.DIAMOND, pos, chunk.gameObject, this);
+                            }
+                            else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.03f, 3) < 0.41f && worldY < 40)
+                            {
+                                chunkData[x, y, z] = new Block(Block.BlockType.REDSTONE, pos, chunk.gameObject, this);
                             }
                             else
                             {
                                 chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
                             }
                         }
-                        else if (worldY == Utilities.GenerateDirtHeight(worldX, worldZ))
+                        else if (worldY == surfaceHeight)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.GRASS, pos, chunk.gameObject, this);
                         }
-                        else if (worldY < Utilities.GenerateDirtHeight(worldX, worldZ))
+                        else if (worldY < surfaceHeight)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
                         }
@@ -131,6 +137,13 @@ namespace CubeCreationEngine.Core
                     }
                 }
             }
+        }
+        public void Redraw() //redraws the chunk texture
+        {
+            GameObject.DestroyImmediate(chunk.GetComponent<MeshFilter>());
+            GameObject.DestroyImmediate(chunk.GetComponent<MeshRenderer>());
+            GameObject.DestroyImmediate(chunk.GetComponent<Collider>());
+            DrawChunk();
         }
         public void DrawChunk()
         {
@@ -156,6 +169,8 @@ namespace CubeCreationEngine.Core
         {
             chunk = new GameObject(World.BuildChunkName(position));
             chunk.transform.position = position;
+            mb = chunk.AddComponent<ChunkMB>();
+            mb.SetOwner(this);
             cubeMaterial = c;
             BuildChunk();
         }

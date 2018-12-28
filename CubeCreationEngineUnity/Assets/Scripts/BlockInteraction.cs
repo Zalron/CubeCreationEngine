@@ -31,49 +31,49 @@ namespace CubeCreationEngine.Player
                     int x = (int)(Mathf.Round(hitBlock.x) - hit.collider.gameObject.transform.position.x);
                     int y = (int)(Mathf.Round(hitBlock.y) - hit.collider.gameObject.transform.position.y);
                     int z = (int)(Mathf.Round(hitBlock.z) - hit.collider.gameObject.transform.position.z);
-                    List<string> updates = new List<string>(); // get the neighbouting chunks blocks coordinates
-                    float thisChunkx = hit.collider.gameObject.transform.position.x;
-                    float thisChunky = hit.collider.gameObject.transform.position.y;
-                    float thisChunkz = hit.collider.gameObject.transform.position.z;
-                    updates.Add(hit.collider.gameObject.name); // 
-                    //checks if neighbouring blocks at the edge of the chunks 
-                    if (x == 0 )
+                    Chunk hitc;
+                    if (World.chunks.TryGetValue(hit.collider.gameObject.name, out hitc) && hitc.chunkData[x,y,z].HitBlock())
                     {
-                        updates.Add(World.BuildChunkName(new Vector3(thisChunkx - World.chunkSize, thisChunky, thisChunkz)));
-                    }
-                    if (x == World.chunkSize - 1) 
-                    {
-                        updates.Add(World.BuildChunkName(new Vector3(thisChunkx + World.chunkSize, thisChunky , thisChunkz)));
-                    }
-                    if (z == 0)
-                    {
-                        updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky, thisChunkz - World.chunkSize)));
-                    }
-                    if (z == World.chunkSize - 1)
-                    {
-                        updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky, thisChunkz + World.chunkSize)));
-                    }
-                    if (y == 0)
-                    {
-                        updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky - World.chunkSize, thisChunkz)));
-                    }
-                    if (y == World.chunkSize - 1)
-                    {
-                        updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky + World.chunkSize, thisChunkz)));
-                    }
-                    foreach (string cname in updates)
-                    {
-                        Chunk c;
-                        if (World.chunks.TryGetValue(cname, out c)) // checking for the block in the chunk name to destroy the block
+                        List<string> updates = new List<string>(); // get the neighbouting chunks blocks coordinates
+                        float thisChunkx = hit.collider.gameObject.transform.position.x;
+                        float thisChunky = hit.collider.gameObject.transform.position.y;
+                        float thisChunkz = hit.collider.gameObject.transform.position.z;
+                        //updates.Add(hit.collider.gameObject.name);
+                        //checks if neighbouring blocks at the edge of the chunks 
+                        if (x == 0)
                         {
-                            DestroyImmediate(c.chunk.GetComponent<MeshFilter>());
-                            DestroyImmediate(c.chunk.GetComponent<MeshRenderer>());
-                            DestroyImmediate(c.chunk.GetComponent<Collider>());
-                            c.chunkData[x, y, z].SetType(Block.BlockType.AIR); // setting the chunk data at the coordinated position to air
-                            c.DrawChunk();
+                            updates.Add(World.BuildChunkName(new Vector3(thisChunkx - World.chunkSize, thisChunky, thisChunkz)));
+                        }
+                        if (x == World.chunkSize - 1)
+                        {
+                            updates.Add(World.BuildChunkName(new Vector3(thisChunkx + World.chunkSize, thisChunky, thisChunkz)));
+                        }
+                        if (z == 0)
+                        {
+                            updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky, thisChunkz - World.chunkSize)));
+                        }
+                        if (z == World.chunkSize - 1)
+                        {
+                            updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky, thisChunkz + World.chunkSize)));
+                        }
+                        if (y == 0)
+                        {
+                            updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky - World.chunkSize, thisChunkz)));
+                        }
+                        if (y == World.chunkSize - 1)
+                        {
+                            updates.Add(World.BuildChunkName(new Vector3(thisChunkx, thisChunky + World.chunkSize, thisChunkz)));
+                        }
+                        foreach (string cname in updates)
+                        {
+                            Chunk c;
+                            if (World.chunks.TryGetValue(cname, out c)) // checking for the block in the chunk name to destroy the block
+                            {
+                                //c.chunkData[x, y, z].SetType(Block.BlockType.AIR); // setting the chunk data at the coordinated position to air
+                                c.Redraw();
+                            }
                         }
                     }
-                   
                 }
             }
         }

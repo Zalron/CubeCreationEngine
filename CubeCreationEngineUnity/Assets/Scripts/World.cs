@@ -9,6 +9,7 @@ namespace CubeCreationEngine.Core
     public class World : MonoBehaviour
     {
         public GameObject player;
+        public static bool doesBlocksHeal = false;
         public Material textureAtlas; // the texture that is going to be aplided to the chunks
         public static int columnHeight = 64; // the height of the world
         public static int chunkSize = 16; // the size of the chunk
