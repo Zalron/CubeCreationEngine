@@ -5,13 +5,11 @@ using CubeCreationEngine.Core;
 public class ChunkMB: MonoBehaviour
 {
     Chunk owner;
-    public ChunkMB()
-    {
-    }
+    public ChunkMB(){}
     public void SetOwner(Chunk o)
     {
         owner = o;
-        //InvokeRepeating("SaveProgress", 10, 1000);
+        InvokeRepeating("SaveProgress", 10, 1000); //calls the save code in the first time after ten seconds and after that every thousand seconds
 
     }
 
@@ -27,13 +25,12 @@ public class ChunkMB: MonoBehaviour
             owner.chunkData[x, y, z].Reset();
         }
     }
-
-    //void SaveProgress()
-    //{
-    //    if (owner.changed)
-    //    {
-    //        owner.Save();
-    //        owner.changed = false;
-    //    }
-    //}
+    void SaveProgress() // checks if this chunk has any blocks change 
+    {
+        if (owner.changed) //if true it will save the changes
+        {
+            owner.Save();
+            owner.changed = false;
+        }
+    }
 }
