@@ -29,11 +29,11 @@ namespace CubeCreationEngine.Core
         GameObject parent;
         public Vector3 position;
         public BlockType health; // set to the maxium health for each block which is set at SetType to NoCrack and adds with every punch 
-        int currentHealth; // the current health of the block
+        public int currentHealth; // the current health of the block
         // the amount of hits that the block can take
         // -1 is indistructible
         // 0 isn't a interactible block no value
-        int[] blockHealthMax = { 3, 3, 8, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
+        public int[] blockHealthMax = { 3, 3, 8, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
         // all of the uv variables
         Vector2[,] blockUVs = {
         {new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f),new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )}, /*GRASS TOP*/
@@ -86,6 +86,22 @@ namespace CubeCreationEngine.Core
             {
                 isSolid = true;
             }
+            if (bType == BlockType.AIR || bType == BlockType.WATER)
+            {
+                isSolid = false;
+            }
+            else
+            {
+                isSolid = true;
+            }
+            if (bType == BlockType.WATER)
+            {
+                parent = owner.fluid.gameObject;
+            }
+            else
+            {
+                parent = owner.chunk.gameObject;
+            }
             health = BlockType.NOCRACK;
             currentHealth = blockHealthMax[(int)bType];
         }
@@ -97,8 +113,16 @@ namespace CubeCreationEngine.Core
         }
         public bool BuildBlock(BlockType b) // builds a block in the space you are pointing at from the variable set on the player object
         {
-            SetType(b);
-            owner.Redraw();
+            //SetType(b);
+            if (b == BlockType.WATER)
+            {
+                owner.mb.StartCoroutine(owner.mb.Flow(this, BlockType.WATER, blockHealthMax[(int)BlockType.WATER], 10));
+            }
+            else
+            {
+                SetType(b);
+                owner.Redraw();
+            }
             return true;
         }
         public bool HitBlock() // checking if the block is indistructable and taking away the health of the block until it is destroyed

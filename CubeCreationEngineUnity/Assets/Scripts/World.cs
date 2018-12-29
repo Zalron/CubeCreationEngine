@@ -18,7 +18,7 @@ namespace CubeCreationEngine.Core
         public static int radius = 5;
         public static ConcurrentDictionary<string, Chunk> chunks; // a dictionary of all of the chunks
         public static List<string> toRemove = new List<string>(); // a list to remove the chunks that are not needed from the dictionary
-        CoroutineQueue queue;
+        public static CoroutineQueue queue;
         public static uint MaxCorourtines = 4000; // must increase with the size of the radius
         public Vector3 lastBuildPos;// store position of player
         public static bool firstbuild = true;

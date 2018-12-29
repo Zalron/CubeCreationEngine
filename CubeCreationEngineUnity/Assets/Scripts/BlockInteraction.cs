@@ -18,6 +18,22 @@ namespace CubeCreationEngine.Player
         // Update is called once per frame
         void Update()
         {
+            if (Input.GetKeyDown("1"))
+            {
+                pBType = Block.BlockType.WATER;
+            }
+            if (Input.GetKeyDown("2"))
+            {
+                pBType = Block.BlockType.STONE;
+            }
+            if (Input.GetKeyDown("3"))
+            {
+                pBType = Block.BlockType.DIRT;
+            }
+            if (Input.GetKeyDown("4"))
+            {
+                pBType = Block.BlockType.GRASS;
+            }
             if (Input.GetMouseButtonDown(0)|| Input.GetMouseButtonDown(1)) // checks for right or left mouse click
             {
                 RaycastHit hit;
