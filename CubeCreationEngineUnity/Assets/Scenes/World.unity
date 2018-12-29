@@ -387,6 +387,10 @@ Prefab:
       propertyPath: m_Layer
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 14300000, guid: 5e9e851c0e142814dac026a256ba2ac0, type: 2}
+      propertyPath: m_Radius
+      value: 0.4
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5e9e851c0e142814dac026a256ba2ac0, type: 2}
   m_IsPrefabAsset: 0
@@ -475,6 +479,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e3df5912774bc646835993773f25462, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  pBType: 0
   cam: {fileID: 207534218}
   playerReach: 10
 --- !u!1 &1957219490

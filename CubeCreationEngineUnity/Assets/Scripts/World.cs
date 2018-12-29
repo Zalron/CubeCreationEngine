@@ -18,7 +18,7 @@ namespace CubeCreationEngine.Core
         public static ConcurrentDictionary<string, Chunk> chunks; // a dictionary of all of the chunks
         public static List<string> toRemove = new List<string>(); // a list to remove the chunks that are not needed from the dictionary
         CoroutineQueue queue;
-        public static uint MaxCorourtines = 1000; // must increase with the size of the radius
+        public static uint MaxCorourtines = 2000; // must increase with the size of the radius
         public Vector3 lastBuildPos;// store position of player
         public static bool firstbuild = true;
         public float lastBuildTime;
@@ -41,6 +41,50 @@ namespace CubeCreationEngine.Core
                 c = new Chunk(chunkPosition, textureAtlas);
                 c.chunk.transform.parent = this.transform;
                 chunks.TryAdd(c.chunk.name, c);
+            }
+        }
+        public static Block GetWorldBlock(Vector3 pos) // getting the block in thw world when clicked on
+        {
+            int cx, cy, cz;
+            //figuring out the chunk to get the block from
+            if (pos.x < 0) // if an negitive numbers for each dimension to push the numbers into the next chunk into the negative direction
+            {
+                cx = (int)(Mathf.Round(pos.x - chunkSize) / (float)chunkSize) * chunkSize;
+            }
+            else // positive numbers
+            {
+                cx = (int)(Mathf.Round(pos.x) / (float)chunkSize) * chunkSize;
+            }
+            if (pos.y < 0) // if an negitive numbers for each dimension to push the numbers into the next chunk into the negative direction
+            {
+                cy = (int)(Mathf.Round(pos.y - chunkSize) / (float)chunkSize) * chunkSize;
+            }
+            else // positive numbers
+            {
+                cy = (int)(Mathf.Round(pos.y) / (float)chunkSize) * chunkSize;
+            }
+            if (pos.z < 0) // if an negitive numbers for each dimension to push the numbers into the next chunk into the negative direction
+            {
+                cz = (int)(Mathf.Round(pos.z - chunkSize) / (float)chunkSize) * chunkSize;
+            }
+            else // positive numbers
+            {
+                cz = (int)(Mathf.Round(pos.z) / (float)chunkSize) * chunkSize;
+            }
+            //turning the negative numbers into a positive number because their is no blocks in the negative number range
+            int blx = (int)Mathf.Abs((float)Mathf.Round(pos.x) - cx);
+            int bly = (int)Mathf.Abs((float)Mathf.Round(pos.y) - cy);
+            int blz = (int)Mathf.Abs((float)Mathf.Round(pos.z) - cz);
+            // turning the chunk position into a name to get the block position
+            string cn = BuildChunkName(new Vector3(cx, cy, cz));
+            Chunk c;
+            if (chunks.TryGetValue(cn, out c))
+            {
+                return c.chunkData[blx, bly, blz]; // accessing the block position
+            }
+            else
+            {
+                return null;
             }
         }
         IEnumerator BuildRecursiveWorld(int x, int y, int z, int startradius, int radius)// builds chunks around the player

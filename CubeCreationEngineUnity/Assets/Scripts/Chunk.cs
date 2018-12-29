@@ -33,12 +33,13 @@ namespace CubeCreationEngine.Core
     {
         public enum ChunkStatus { DRAW, DONE, KEEP }
         public Material cubeMaterial;
-        public Block[,,] chunkData;
-        public GameObject chunk;
-        public ChunkStatus status;
+        public Block[,,] chunkData; // a three dimensional variable that stores all of the chunks blocks positions
+        public GameObject chunk; // the chunks gameobject 
+        public ChunkStatus status; 
         public float touchedTime;
-        public ChunkMB mb;
-        BlockData bd;
+        public ChunkMB mb; //the chunks monobehaviour script
+        BlockData bd; // the class that handles saving the block data
+        public bool changed = false; //checks of any changes to the blocks in the chunks
         string BuildChunkFileName(Vector3 v) // builds a chunk file name for each chunk 
         {
             return Application.persistentDataPath + "/savedata/Chunk_" + (int)v.x + "_" + (int)v.y + "_" + (int)v.z + "_" + World.chunkSize + "_" + World.radius + ".dat";

@@ -24,9 +24,9 @@ namespace CubeCreationEngine.Core
         
         public BlockType bType;
         public bool isSolid;
-        Chunk owner; // the chunk that the block belongs to
+        public Chunk owner; // the chunk that the block belongs to
         GameObject parent;
-        Vector3 position;
+        public Vector3 position;
         public BlockType health; // set to the maxium health for each block which is set at SetType to NoCrack and adds with every punch 
         int currentHealth; // the current health of the block
         // the amount of hits that the block can take
@@ -87,6 +87,12 @@ namespace CubeCreationEngine.Core
             health = BlockType.NOCRACK;
             currentHealth = blockHealthMax[(int)bType];
             owner.Redraw();
+        }
+        public bool BuildBlock(BlockType b) // builds a block in the space you are pointing at from the variable set on the player object
+        {
+            SetType(b);
+            owner.Redraw();
+            return true;
         }
         public bool HitBlock() // checking if the block is indistructable and taking away the health of the block until it is destroyed
         {
