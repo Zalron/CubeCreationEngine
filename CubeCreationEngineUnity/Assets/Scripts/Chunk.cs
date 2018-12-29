@@ -33,8 +33,10 @@ namespace CubeCreationEngine.Core
     {
         public enum ChunkStatus { DRAW, DONE, KEEP }
         public Material cubeMaterial;
+        public Material fluidMaterial;
         public Block[,,] chunkData; // a three dimensional variable that stores all of the chunks blocks positions
         public GameObject chunk; // the chunks gameobject 
+        public GameObject fluid;
         public ChunkStatus status; 
         public float touchedTime;
         public ChunkMB mb; //the chunks monobehaviour script
@@ -99,11 +101,8 @@ namespace CubeCreationEngine.Core
                         }
                         // generates the blocks in the chunks into a height map 
                         int surfaceHeight = Utilities.GenerateDirtHeight(worldX,worldZ);
-                        if (Utilities.fBM3D(worldX, worldY, worldZ, Utilities.caveSmooth, Utilities.caveOctaves) < 0.42f)
-                        {
-                            chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
-                        }
-                        else if (worldY == 0)
+                        int waterHeight = 490;
+                        if (worldY == 0)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.BEDROCK, pos, chunk.gameObject, this);
                         }
@@ -130,10 +129,19 @@ namespace CubeCreationEngine.Core
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
                         }
+                        else if (worldY < Utilities.maxWaterSpawnHeight)
+                        {
+                            chunkData[x, y, z] = new Block(Block.BlockType.WATER, pos, fluid.gameObject, this);
+                        }
                         else
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
                         }
+                        if (chunkData[x,y,z].bType != Block.BlockType.WATER && Utilities.fBM3D(worldX, worldY, worldZ, 0.1f, 3) < 0.42f)
+                        {
+                            chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
+                        }
+                        //if(worldY < Utilities.maxWaterSpawnHeight && chunk)
                         status = ChunkStatus.DRAW;
                     }
                 }
@@ -144,11 +152,14 @@ namespace CubeCreationEngine.Core
             GameObject.DestroyImmediate(chunk.GetComponent<MeshFilter>());
             GameObject.DestroyImmediate(chunk.GetComponent<MeshRenderer>());
             GameObject.DestroyImmediate(chunk.GetComponent<Collider>());
+            GameObject.DestroyImmediate(fluid.GetComponent<MeshFilter>());
+            GameObject.DestroyImmediate(fluid.GetComponent<MeshRenderer>());
+            GameObject.DestroyImmediate(fluid.GetComponent<Collider>());
             DrawChunk();
         }
         public void DrawChunk()
         {
-            //Drawing the blocks
+            //Drawing soild and water blocks 
             for (int z = 0; z < World.chunkSize; z++)
             {
                 for (int y = 0; y < World.chunkSize; y++)
@@ -159,26 +170,31 @@ namespace CubeCreationEngine.Core
                     }
                 }
             }
-            CombineQuads();
+            CombineQuads(chunk.gameObject, cubeMaterial);
             // creating and adding a meshcollider component to the individual chunks
             MeshCollider collider = chunk.gameObject.AddComponent(typeof(MeshCollider)) as MeshCollider;
             collider.sharedMesh = chunk.transform.GetComponent<MeshFilter>().mesh;
+            // creating water material but not adding in the collider 
+            CombineQuads(fluid.gameObject, fluidMaterial);
             status = ChunkStatus.DONE;
         }
         public Chunk(){}
-        public Chunk(Vector3 position, Material c) // constructor for the chunks
+        public Chunk(Vector3 position, Material c, Material t) // constructor for the chunks
         {
             chunk = new GameObject(World.BuildChunkName(position));
             chunk.transform.position = position;
+            fluid = new GameObject(World.BuildChunkName(position)+"_F");
+            fluid.transform.position = position;
             mb = chunk.AddComponent<ChunkMB>();
             mb.SetOwner(this);
             cubeMaterial = c;
+            fluidMaterial = t;
             BuildChunk();
         }
-        void CombineQuads() // Combines all of the meshs into one object
+        void CombineQuads(GameObject o, Material m) // Combines all of the meshs into one object
         {
             // Combine all children meshs
-            MeshFilter[] meshFilters = chunk.GetComponentsInChildren<MeshFilter>();
+            MeshFilter[] meshFilters = o.GetComponentsInChildren<MeshFilter>();
             CombineInstance[] combine = new CombineInstance[meshFilters.Length];
             int i = 0;
             while (i < meshFilters.Length)
@@ -188,15 +204,15 @@ namespace CubeCreationEngine.Core
                 i++;
             }
             // Create a new mesh on the parent object
-            MeshFilter mf = (MeshFilter)chunk.AddComponent(typeof(MeshFilter));
+            MeshFilter mf = (MeshFilter)o.gameObject.AddComponent(typeof(MeshFilter));
             mf.mesh = new Mesh();
             // Add combined meshes on children as the parent's mesh
             mf.mesh.CombineMeshes(combine);
             // Creates a renderer for the parent
-            MeshRenderer renderer = chunk.AddComponent(typeof(MeshRenderer)) as MeshRenderer;
-            renderer.material = cubeMaterial;
+            MeshRenderer renderer = o.gameObject.AddComponent(typeof(MeshRenderer)) as MeshRenderer;
+            renderer.material = m;
             // Deletes all of the uncombined children
-            foreach (Transform quad in chunk.transform)
+            foreach (Transform quad in o.transform)
             {
                 GameObject.Destroy(quad.gameObject);
             }

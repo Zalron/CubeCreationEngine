@@ -7,16 +7,20 @@ namespace CubeCreationEngine.Core
     {
         // variables used for dirt height generation
         public static int maxDirtSpawnHeight = 500;
+        public static int minDirtSpawnHeight = 450;
         public static float dirtSmooth = 0.01f;
         public static int dirtOctaves = 4;
         public static float dirtPersistence = 0.5f;
         // varibles used for stone height generation
         public static int maxStoneSpawnHeight = 400;
+        public static int minStoneSpawnHeight = 1;
         public static float stoneSmooth = 0.02f;
         public static int stoneOctaves = 5;
         public static float stonePersistence = 0.5f;
+        // variables used for water generation
+        public static int maxWaterSpawnHeight = 460;
         // varibles used for cave generation
-        public static float caveSmooth = 0.07f;
+        public static float caveSmooth = 0.1f;
         public static int caveOctaves = 3;
         // variables used for Diamond generation
         public static int maxDiamondSpawnHeight = 20;
@@ -24,12 +28,12 @@ namespace CubeCreationEngine.Core
         public static int DiamondOctaves = 2;
         public static int GenerateStoneHeight(float x, float z) // generates the stone height map using fractal brownian motion
         {
-            float height = Map(0, maxStoneSpawnHeight, 0, 1, fBM(x * stoneSmooth, z * stoneSmooth, stoneOctaves, stonePersistence));
+            float height = Map(minStoneSpawnHeight, maxStoneSpawnHeight, 0, 1, fBM(x * stoneSmooth, z * stoneSmooth, stoneOctaves, stonePersistence));
             return (int)height;
         }
         public static int GenerateDirtHeight(float x, float z) // generates the dirt height map using fractal brownian motion
         {
-            float height = Map(0, maxDirtSpawnHeight, 0, 1, fBM(x * dirtSmooth, z * dirtSmooth, dirtOctaves, dirtPersistence));
+            float height = Map(minDirtSpawnHeight, maxDirtSpawnHeight, 0, 1, fBM(x * dirtSmooth, z * dirtSmooth, dirtOctaves, dirtPersistence));
             return (int)height;
         }
         static float Map(float newmin, float newmax, float originalmin, float originalmax, float value) //generates a map for the fractal brownian motion to map on to

@@ -11,14 +11,15 @@ namespace CubeCreationEngine.Core
         public GameObject player;
         public static bool doesBlocksHeal = false;
         public Material textureAtlas; // the texture that is going to be aplided to the chunks
+        public Material textureAtlasFuild; // the texture that is going to be aplided to the fuilds
         public static int columnHeight = 64; // the height of the world
         public static int chunkSize = 16; // the size of the chunk
         //public static int worldSize = 2; // size of the world
-        public static int radius = 3;
+        public static int radius = 5;
         public static ConcurrentDictionary<string, Chunk> chunks; // a dictionary of all of the chunks
         public static List<string> toRemove = new List<string>(); // a list to remove the chunks that are not needed from the dictionary
         CoroutineQueue queue;
-        public static uint MaxCorourtines = 2000; // must increase with the size of the radius
+        public static uint MaxCorourtines = 4000; // must increase with the size of the radius
         public Vector3 lastBuildPos;// store position of player
         public static bool firstbuild = true;
         public float lastBuildTime;
@@ -38,8 +39,9 @@ namespace CubeCreationEngine.Core
             Chunk c;
             if (!chunks.TryGetValue(n, out c)) // checks if the chunks has already been generated
             {
-                c = new Chunk(chunkPosition, textureAtlas);
+                c = new Chunk(chunkPosition, textureAtlas, textureAtlasFuild);
                 c.chunk.transform.parent = this.transform;
+                c.fluid.transform.parent = this.transform;
                 chunks.TryAdd(c.chunk.name, c);
             }
         }

@@ -511,6 +511,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 1716760961}
   textureAtlas: {fileID: 2100000, guid: f47f4010c3f597a4ba38951d2a2fdae1, type: 2}
+  textureAtlasFuild: {fileID: 2100000, guid: 7d565249ec9b1d547a64ba1c65495a38, type: 2}
   lastBuildPos: {x: 0, y: 0, z: 0}
   lastBuildTime: 0
   startTime: 0

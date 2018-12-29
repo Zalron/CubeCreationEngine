@@ -10,6 +10,7 @@ namespace CubeCreationEngine.Core
         {
             GRASS,
             DIRT,
+            WATER,
             STONE,
             BEDROCK,
             REDSTONE,
@@ -32,38 +33,44 @@ namespace CubeCreationEngine.Core
         // the amount of hits that the block can take
         // -1 is indistructible
         // 0 isn't a interactible block no value
-        int[] blockHealthMax = { 3, 3, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
+        int[] blockHealthMax = { 3, 3, 8, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
         // all of the uv variables
         Vector2[,] blockUVs = {
-        /*GRASS TOP*/		{new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f),new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )},
-		/*GRASS SIDE*/		{new Vector2( 0.1875f, 0.9375f ), new Vector2( 0.25f, 0.9375f),new Vector2( 0.1875f, 1.0f ),new Vector2( 0.25f, 1.0f )},
-		/*DIRT*/			{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f),new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )},
-		/*STONE*/			{new Vector2( 0, 0.875f ), new Vector2( 0.0625f, 0.875f),new Vector2( 0, 0.9375f ),new Vector2( 0.0625f, 0.9375f )},
-		/*BEDROCK*/			{new Vector2( 0.3125f, 0.8125f ), new Vector2( 0.375f, 0.8125f),new Vector2( 0.3125f, 0.875f ),new Vector2( 0.375f, 0.875f )},
-		/*REDSTONE*/		{new Vector2( 0.1875f, 0.75f ), new Vector2( 0.25f, 0.75f), new Vector2( 0.1875f, 0.8125f ),new Vector2( 0.25f, 0.8125f )},
-		/*DIAMOND*/			{new Vector2( 0.125f, 0.75f ), new Vector2( 0.1875f, 0.75f),new Vector2( 0.125f, 0.8125f ),new Vector2( 0.1875f, 0.8125f )},
-		/*NOCRACK*/			{new Vector2( 0.6875f, 0f ), new Vector2( 0.75f, 0f),new Vector2( 0.6875f, 0.0625f ),new Vector2( 0.75f, 0.0625f )},
-		/*CRACK1*/			{ new Vector2(0f,0f),  new Vector2(0.0625f,0f), new Vector2(0f,0.0625f), new Vector2(0.0625f,0.0625f)},
- 		/*CRACK2*/			{ new Vector2(0.0625f,0f),  new Vector2(0.125f,0f),new Vector2(0.0625f,0.0625f), new Vector2(0.125f,0.0625f)},
- 		/*CRACK3*/			{ new Vector2(0.125f,0f),  new Vector2(0.1875f,0f),new Vector2(0.125f,0.0625f), new Vector2(0.1875f,0.0625f)},
- 		/*CRACK4*/			{ new Vector2(0.1875f,0f),  new Vector2(0.25f,0f),new Vector2(0.1875f,0.0625f), new Vector2(0.25f,0.0625f)}
+        {new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f),new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )}, /*GRASS TOP*/
+		{new Vector2( 0.1875f, 0.9375f ), new Vector2( 0.25f, 0.9375f),new Vector2( 0.1875f, 1.0f ),new Vector2( 0.25f, 1.0f )}, /*GRASS SIDE*/
+		{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f),new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )}, /*DIRT*/
+        {new Vector2( 0.875f, 0.125f ), new Vector2( 0.9375f, 0.125f),new Vector2( 0.875f, 0.1875f ),new Vector2( 0.9375f, 0.1875f )}, /*WATER*/
+		{new Vector2( 0, 0.875f ), new Vector2( 0.0625f, 0.875f),new Vector2( 0, 0.9375f ),new Vector2( 0.0625f, 0.9375f )}, /*STONE*/
+		{new Vector2( 0.3125f, 0.8125f ), new Vector2( 0.375f, 0.8125f),new Vector2( 0.3125f, 0.875f ),new Vector2( 0.375f, 0.875f )}, /*BEDROCK*/	
+		{new Vector2( 0.1875f, 0.75f ), new Vector2( 0.25f, 0.75f), new Vector2( 0.1875f, 0.8125f ),new Vector2( 0.25f, 0.8125f )}, /*REDSTONE*/
+		{new Vector2( 0.125f, 0.75f ), new Vector2( 0.1875f, 0.75f),new Vector2( 0.125f, 0.8125f ),new Vector2( 0.1875f, 0.8125f )}, /*DIAMOND*/
+		{new Vector2( 0.6875f, 0f ), new Vector2( 0.75f, 0f),new Vector2( 0.6875f, 0.0625f ),new Vector2( 0.75f, 0.0625f )}, /*NOCRACK*/
+		{new Vector2(0f,0f),  new Vector2(0.0625f,0f), new Vector2(0f,0.0625f), new Vector2(0.0625f,0.0625f)}, /*CRACK1*/
+ 		{new Vector2(0.0625f,0f),  new Vector2(0.125f,0f),new Vector2(0.0625f,0.0625f), new Vector2(0.125f,0.0625f)}, /*CRACK2*/
+ 		{new Vector2(0.125f,0f),  new Vector2(0.1875f,0f),new Vector2(0.125f,0.0625f), new Vector2(0.1875f,0.0625f)}, /*CRACK3*/
+ 		{new Vector2(0.1875f,0f),  new Vector2(0.25f,0f),new Vector2(0.1875f,0.0625f), new Vector2(0.25f,0.0625f)} /*CRACK4*/
         };
-
-
-
         public Block(BlockType b, Vector3 pos, GameObject p, Chunk o) // A constructor for the blocks 
         {
             bType = b;
             owner = o;
             parent = p;
             position = pos;
-            if (bType == BlockType.AIR)
+            if (bType == BlockType.AIR||bType == BlockType.WATER)
             {
                 isSolid = false;
             }
             else
             {
                 isSolid = true;
+            }
+            if (bType == BlockType.WATER)
+            {
+                parent = owner.fluid.gameObject;
+            }
+            else
+            {
+                parent = owner.chunk.gameObject;
             }
             health = BlockType.NOCRACK;
             currentHealth = blockHealthMax[(int)bType];
@@ -234,7 +241,7 @@ namespace CubeCreationEngine.Core
             }
             return i;
         }
-        public bool HasSolidNeighbour(int x, int y, int z) // checks if the block as a solid neighbour so the engine dosn't draw unnecessary faces
+        public Block GetBlock(int x, int y, int z) // most of the code from HasSolidNeighbour but HasSolidNeighbour calls this function
         {
             Block[,,] chunks;
             if (x < 0 || x >= World.chunkSize || y < 0 || y >= World.chunkSize || z < 0 || z >= World.chunkSize) // checking for solid neighbour in other chunks
@@ -251,7 +258,7 @@ namespace CubeCreationEngine.Core
                 }
                 else
                 {
-                    return false;
+                    return null;
                 }
             }
             // checking for solid neighbour in this chunk
@@ -259,9 +266,17 @@ namespace CubeCreationEngine.Core
             {
                 chunks = owner.chunkData;
             }
+            return chunks[x, y, z];
+        }
+        public bool HasSolidNeighbour(int x, int y, int z) // checks if the block as a solid neighbour so the engine dosn't draw unnecessary faces
+        {
             try
             {
-                return chunks[x, y, z].isSolid;
+                Block b = GetBlock(x, y, z);
+                if (b != null)
+                {
+                    return (b.isSolid || b.bType == bType); // checking if the neighbour is solid or if the neighbour is the same block (used for water drawing)
+                }
             }
             catch (System.IndexOutOfRangeException) { }
             return false;
@@ -296,6 +311,7 @@ namespace CubeCreationEngine.Core
             {
                 CreateQuad(Cubeside.RIGHT);
             }
+            //&& bType != BlockType.WATER
         }
     }
 }
