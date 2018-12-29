@@ -12,6 +12,8 @@ namespace CubeCreationEngine.Core
             DIRT,
             WATER,
             STONE,
+            SAND,
+            GOLD,
             BEDROCK,
             REDSTONE,
             DIAMOND,
@@ -33,7 +35,7 @@ namespace CubeCreationEngine.Core
         // the amount of hits that the block can take
         // -1 is indistructible
         // 0 isn't a interactible block no value
-        public int[] blockHealthMax = { 3, 3, 8, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
+        public int[] blockHealthMax = { 3, 3, 8, 4, 2, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
         // all of the uv variables
         Vector2[,] blockUVs = {
         {new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f),new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )}, /*GRASS TOP*/
@@ -41,6 +43,8 @@ namespace CubeCreationEngine.Core
 		{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f),new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )}, /*DIRT*/
         {new Vector2( 0.875f, 0.125f ), new Vector2( 0.9375f, 0.125f),new Vector2( 0.875f, 0.1875f ),new Vector2( 0.9375f, 0.1875f )}, /*WATER*/
 		{new Vector2( 0, 0.875f ), new Vector2( 0.0625f, 0.875f),new Vector2( 0, 0.9375f ),new Vector2( 0.0625f, 0.9375f )}, /*STONE*/
+        {new Vector2( 0.125f, 0.875f ), new Vector2( 0.1875f, 0.875f),new Vector2( 0.125f, 0.9375f ),new Vector2( 0.1875f, 0.9375f )}, /*SAND*/
+        {new Vector2( 0, 0.8125f ), new Vector2( 0.0625f, 0.8125f),new Vector2( 0, 0.875f ),new Vector2( 0.0625f, 0.0875f )}, /*GOLD*/
 		{new Vector2( 0.3125f, 0.8125f ), new Vector2( 0.375f, 0.8125f),new Vector2( 0.3125f, 0.875f ),new Vector2( 0.375f, 0.875f )}, /*BEDROCK*/	
 		{new Vector2( 0.1875f, 0.75f ), new Vector2( 0.25f, 0.75f), new Vector2( 0.1875f, 0.8125f ),new Vector2( 0.25f, 0.8125f )}, /*REDSTONE*/
 		{new Vector2( 0.125f, 0.75f ), new Vector2( 0.1875f, 0.75f),new Vector2( 0.125f, 0.8125f ),new Vector2( 0.1875f, 0.8125f )}, /*DIAMOND*/
@@ -56,6 +60,14 @@ namespace CubeCreationEngine.Core
             owner = o;
             parent = p;
             position = pos;
+            if (bType == BlockType.AIR)
+            {
+                isSolid = false;
+            }
+            else
+            {
+                isSolid = true;
+            }
             if (bType == BlockType.AIR||bType == BlockType.WATER)
             {
                 isSolid = false;
@@ -117,6 +129,10 @@ namespace CubeCreationEngine.Core
             if (b == BlockType.WATER)
             {
                 owner.mb.StartCoroutine(owner.mb.Flow(this, BlockType.WATER, blockHealthMax[(int)BlockType.WATER], 10));
+            }
+            else if(b == BlockType.SAND)
+            {
+                owner.mb.StartCoroutine(owner.mb.Drop(this, BlockType.SAND, 20));
             }
             else
             {

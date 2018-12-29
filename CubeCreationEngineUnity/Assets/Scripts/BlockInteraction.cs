@@ -34,6 +34,10 @@ namespace CubeCreationEngine.Player
             {
                 pBType = Block.BlockType.GRASS;
             }
+            if (Input.GetKeyDown("5"))
+            {
+                pBType = Block.BlockType.SAND;
+            }
             if (Input.GetMouseButtonDown(0)|| Input.GetMouseButtonDown(1)) // checks for right or left mouse click
             {
                 RaycastHit hit;

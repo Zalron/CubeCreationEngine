@@ -116,6 +116,10 @@ namespace CubeCreationEngine.Core
                             {
                                 chunkData[x, y, z] = new Block(Block.BlockType.REDSTONE, pos, chunk.gameObject, this);
                             }
+                            else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.03f, 3) < 0.41f && worldY < 80)
+                            {
+                                chunkData[x, y, z] = new Block(Block.BlockType.GOLD, pos, chunk.gameObject, this);
+                            }
                             else
                             {
                                 chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
@@ -128,6 +132,10 @@ namespace CubeCreationEngine.Core
                         else if (worldY < surfaceHeight)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
+                        }
+                        else if (worldY == surfaceHeight && worldY < Utilities.maxWaterSpawnHeight)
+                        {
+                            chunkData[x, y, z] = new Block(Block.BlockType.SAND, pos, chunk.gameObject, this);
                         }
                         else if (worldY < Utilities.maxWaterSpawnHeight)
                         {
