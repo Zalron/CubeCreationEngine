@@ -75,6 +75,23 @@ namespace CubeCreationEngine.Core
             file.Close();
             //Debug.Log("Saving chunk from file: " + chunkFile);
         }
+        public void UpdateChunk() // updates the chunk 
+        {
+            for (int z = 0; z < World.chunkSize; z++)
+            {
+                for (int y = 0; y < World.chunkSize; y++)
+                {
+                    for (int x = 0; x < World.chunkSize; x++)
+                    {
+                        if (chunkData[x,y,z].bType == Block.BlockType.SAND)
+                        {
+                            mb.StartCoroutine(mb.Drop(chunkData[x,y,z], Block.BlockType.SAND, 20));
+                        }
+                        
+                    }
+                }
+            }
+        }
         void BuildChunk() // Creating the chunks asynchronous to the normal unity logic
         {
             bool dataFromFile = false;

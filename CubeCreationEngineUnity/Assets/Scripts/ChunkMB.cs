@@ -24,14 +24,17 @@ public class ChunkMB: MonoBehaviour
             owner.chunkData[x, y, z].Reset();
         }
     }
-    public IEnumerator Drop(Block b, Block.BlockType bt, int maxdrop)
+    public IEnumerator Drop(Block b, Block.BlockType bt, int maxdrop) // drops the block by moving it through the chunk until it hits the ground or reachs the drop limit
     {
         Block thisBlock = b;
         Block prevBlock = null;
         for (int i = 0; i < maxdrop; i++)
         {
             Block.BlockType previousType = thisBlock.bType;
-            thisBlock.SetType(bt);
+            if (previousType != bt)
+            {
+                thisBlock.SetType(bt);
+            }
             if (prevBlock != null)
             {
                 prevBlock.SetType(previousType);

@@ -65,9 +65,6 @@ namespace CubeCreationEngine.Player
                     Block b = World.GetWorldBlock(hitBlock);
                     // Debug.Log(b.position);
                     hitc = b.owner;
-                    //int x = (int)(Mathf.Round(hitBlock.x) - hit.collider.gameObject.transform.position.x);
-                    //int y = (int)(Mathf.Round(hitBlock.y) - hit.collider.gameObject.transform.position.y);
-                    //int z = (int)(Mathf.Round(hitBlock.z) - hit.collider.gameObject.transform.position.z);
                     bool update = false;
                     if (Input.GetMouseButtonDown(0)) // when left clicking it calls hitblock
                     {

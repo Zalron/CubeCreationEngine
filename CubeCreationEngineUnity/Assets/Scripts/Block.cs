@@ -24,7 +24,6 @@ namespace CubeCreationEngine.Core
             CRACK4,
             AIR
         }
-        
         public BlockType bType;
         public bool isSolid;
         public Chunk owner; // the chunk that the block belongs to
@@ -60,14 +59,6 @@ namespace CubeCreationEngine.Core
             owner = o;
             parent = p;
             position = pos;
-            if (bType == BlockType.AIR)
-            {
-                isSolid = false;
-            }
-            else
-            {
-                isSolid = true;
-            }
             if (bType == BlockType.AIR||bType == BlockType.WATER)
             {
                 isSolid = false;
@@ -90,14 +81,6 @@ namespace CubeCreationEngine.Core
         public void SetType(BlockType b)
         {
             bType = b;
-            if (bType == BlockType.AIR)
-            {
-                isSolid = false;
-            }
-            else
-            {
-                isSolid = true;
-            }
             if (bType == BlockType.AIR || bType == BlockType.WATER)
             {
                 isSolid = false;
@@ -159,6 +142,7 @@ namespace CubeCreationEngine.Core
                 isSolid = false;
                 health = BlockType.NOCRACK;
                 owner.Redraw();
+                owner.UpdateChunk();
                 return true;
             }
             owner.Redraw();
