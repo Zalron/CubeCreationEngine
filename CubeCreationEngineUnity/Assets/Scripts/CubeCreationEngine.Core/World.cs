@@ -34,7 +34,7 @@ namespace CubeCreationEngine.Core
         }
         void BuildChunkAt(int x, int y, int z)// builds chunks
         {
-            Vector3 chunkPosition = new Vector3(x*chunkSize, y * chunkSize, z * chunkSize);
+            Vector3 chunkPosition = new Vector3(x * chunkSize, y * chunkSize, z * chunkSize);
             string n = BuildChunkName(chunkPosition);
             Chunk c;
             if (!chunks.TryGetValue(n, out c)) // checks if the chunks has already been generated

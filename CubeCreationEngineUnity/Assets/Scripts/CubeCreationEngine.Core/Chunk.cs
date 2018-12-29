@@ -112,68 +112,68 @@ namespace CubeCreationEngine.Core
                         int worldX = (int)(x + chunk.transform.position.x);
                         int worldY = (int)(y + chunk.transform.position.y);
                         int worldZ = (int)(z + chunk.transform.position.z);
-                        if (dataFromFile) // before any chunks are created we check if there is a file to load data from
-                        {
-                            chunkData[x, y, z] = new Block(bd.matrix[x, y, z], pos, chunk.gameObject, this);
-                            continue;
-                        }
+                        //if (dataFromFile) // before any chunks are created we check if there is a file to load data from
+                        //{
+                        //    chunkData[x, y, z] = new Block(bd.matrix[x, y, z], pos, chunk.gameObject, this);
+                        //    continue;
+                        //}
                         // generates the blocks in the chunks into a height map 
                         int surfaceHeight = Utilities.GenerateDirtHeight(worldX,worldZ);
                         int waterHeight = 490;
                         if (worldY == 0)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.BEDROCK, pos, chunk.gameObject, this);
+                            chunkData[x, y, z] = new BedrockBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         else if (worldY <= Utilities.GenerateStoneHeight(worldX, worldZ))
                         {
                             if (Utilities.fBM3D(worldX, worldY, worldZ, 0.01f, 2) < 0.4f && worldY < Utilities.maxDiamondSpawnHeight)
                             {
-                                chunkData[x, y, z] = new Block(Block.BlockType.DIAMOND, pos, chunk.gameObject, this);
+                                chunkData[x, y, z] = new DiamondBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.03f, 3) < 0.41f && worldY < 40)
                             {
-                                chunkData[x, y, z] = new Block(Block.BlockType.REDSTONE, pos, chunk.gameObject, this);
+                                chunkData[x, y, z] = new RedStoneBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.03f, 3) < 0.41f && worldY < 80)
                             {
-                                chunkData[x, y, z] = new Block(Block.BlockType.GOLD, pos, chunk.gameObject, this);
+                                chunkData[x, y, z] = new GoldBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else
                             {
-                                chunkData[x, y, z] = new Block(Block.BlockType.STONE, pos, chunk.gameObject, this);
+                                chunkData[x, y, z] = new StoneBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                         }
                         else if (worldY == surfaceHeight)
                         {
                             if (Utilities.fBM3D(worldX, worldY, worldZ, 0.4f, 2) < 0.4f)
                             {
-                                chunkData[x, y, z] = new Block(Block.BlockType.WOODBASE, pos, chunk.gameObject, this);
+                                chunkData[x, y, z] = new WoodBaseBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else
                             {
-                                chunkData[x, y, z] = new Block(Block.BlockType.GRASS, pos, chunk.gameObject, this);
+                                chunkData[x, y, z] = new DirtBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                            
                         }
                         else if (worldY < surfaceHeight)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
+                            chunkData[x, y, z] = new GrassBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         else if (worldY == surfaceHeight && worldY <= Utilities.maxWaterSpawnHeight)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.SAND, pos, chunk.gameObject, this);
+                            chunkData[x, y, z] = new SandBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         else if (worldY < Utilities.maxWaterSpawnHeight)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.WATER, pos, fluid.gameObject, this);
+                            chunkData[x, y, z] = new WaterBlock(pos, fluid.gameObject, fluidMaterial);
                         }
                         else
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
+                            chunkData[x, y, z] = new AirBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         if (chunkData[x,y,z].bType != Block.BlockType.WATER && Utilities.fBM3D(worldX, worldY, worldZ, 0.1f, 3) < 0.42f)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.AIR, pos, chunk.gameObject, this);
+                            chunkData[x, y, z] = new AirBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         //if(worldY < Utilities.maxWaterSpawnHeight && chunk)
                         status = ChunkStatus.DRAW;

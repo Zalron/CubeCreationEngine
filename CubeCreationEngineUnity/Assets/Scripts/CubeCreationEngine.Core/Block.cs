@@ -30,7 +30,9 @@ namespace CubeCreationEngine.Core
         public BlockType bType;
         public bool isSolid;
         public Chunk owner; // the chunk that the block belongs to
-        GameObject parent;
+        public GameObject parent;
+        public Material cubeMaterial;
+        public Material fluidMaterial;
         public Vector3 position;
         public BlockType health; // set to the maxium health for each block which is set at SetType to NoCrack and adds with every punch 
         public int currentHealth; // the current health of the block
@@ -39,7 +41,7 @@ namespace CubeCreationEngine.Core
         // 0 isn't a interactible block no value
         public int[] blockHealthMax = { 3, 3, 8, 4, 1, 2, 2, 2, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
         // all of the uv variables
-        Vector2[,] blockUVs = {
+        public Vector2[,] blockUVs = {
         {new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f),new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )}, /*GRASS TOP*/
 		{new Vector2( 0.1875f, 0.9375f ), new Vector2( 0.25f, 0.9375f),new Vector2( 0.1875f, 1.0f ),new Vector2( 0.25f, 1.0f )}, /*GRASS SIDE*/
 		{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f),new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )}, /*DIRT*/
@@ -59,42 +61,42 @@ namespace CubeCreationEngine.Core
  		{new Vector2(0.125f,0f),  new Vector2(0.1875f,0f),new Vector2(0.125f,0.0625f), new Vector2(0.1875f,0.0625f)}, /*CRACK3*/
  		{new Vector2(0.1875f,0f),  new Vector2(0.25f,0f),new Vector2(0.1875f,0.0625f), new Vector2(0.25f,0.0625f)} /*CRACK4*/
         };
-        public Block(BlockType b, Vector3 pos, GameObject p, Chunk o) // A constructor for the blocks 
-        {
-            bType = b;
-            owner = o;
-            parent = p;
-            position = pos;
-            if (bType == BlockType.AIR||bType == BlockType.WATER)
-            {
-                isSolid = false;
-            }
-            else
-            {
-                isSolid = true;
-            }
-            if (bType == BlockType.WATER)
-            {
-                parent = owner.fluid.gameObject;
-            }
-            else
-            {
-                parent = owner.chunk.gameObject;
-            }
-            health = BlockType.NOCRACK;
-            currentHealth = blockHealthMax[(int)bType];
-        }
+        //public Block(BlockType b, Vector3 pos, GameObject p, Chunk o) // A constructor for the blocks 
+        //{
+        //    bType = b;
+        //    owner = o;
+        //    parent = p;
+        //    position = pos;
+        //    if (bType == BlockType.AIR||bType == BlockType.WATER)
+        //    {
+        //        isSolid = false;
+        //    }
+        //    else
+        //    {
+        //        isSolid = true;
+        //    }
+        //    if (bType == BlockType.WATER)
+        //    {
+        //        parent = owner.fluid.gameObject;
+        //    }
+        //    else
+        //    {
+        //        parent = owner.chunk.gameObject;
+        //    }
+        //    health = BlockType.NOCRACK;
+        //    currentHealth = blockHealthMax[(int)bType];
+        //}
         public void SetType(BlockType b)
         {
             bType = b;
-            if (bType == BlockType.AIR || bType == BlockType.WATER)
-            {
-                isSolid = false;
-            }
-            else
-            {
-                isSolid = true;
-            }
+            //if (bType == BlockType.AIR || bType == BlockType.WATER)
+            //{
+            //    isSolid = false;
+            //}
+            //else
+            //{
+            //    isSolid = true;
+            //}
             if (bType == BlockType.WATER)
             {
                 parent = owner.fluid.gameObject;
@@ -103,8 +105,8 @@ namespace CubeCreationEngine.Core
             {
                 parent = owner.chunk.gameObject;
             }
-            health = BlockType.NOCRACK;
-            currentHealth = blockHealthMax[(int)bType];
+            //health = BlockType.NOCRACK;
+            //currentHealth = blockHealthMax[(int)bType];
         }
         public void Reset()
         {
@@ -114,7 +116,7 @@ namespace CubeCreationEngine.Core
         }
         public bool BuildBlock(BlockType b) // builds a block in the space you are pointing at from the variable set on the player object
         {
-            //SetType(b);
+            SetType(b);
             if (b == BlockType.WATER)
             {
                 owner.mb.StartCoroutine(owner.mb.Flow(this, BlockType.WATER, blockHealthMax[(int)BlockType.WATER], 10));
@@ -171,26 +173,26 @@ namespace CubeCreationEngine.Core
             Vector2 uv01;
             Vector2 uv11;
             // assigning the textures from the atlas
-            if (bType == BlockType.GRASS && side == Cubeside.TOP) // grass
+            if (side == Cubeside.TOP) // grass
             {
                 uv00 = blockUVs[0,0];
                 uv10 = blockUVs[0,1];
                 uv01 = blockUVs[0,2];
                 uv11 = blockUVs[0,3];
             }
-            else if (bType == BlockType.GRASS && side == Cubeside.BOTTOM)
+            else if (side == Cubeside.BOTTOM)
             {
-                uv00 = blockUVs[(int)(BlockType.DIRT+1), 0];
-                uv10 = blockUVs[(int)(BlockType.DIRT+1), 1];
-                uv01 = blockUVs[(int)(BlockType.DIRT+1), 2];
-                uv11 = blockUVs[(int)(BlockType.DIRT+1), 3];
+                uv00 = blockUVs[2, 0];
+                uv10 = blockUVs[2, 1];
+                uv01 = blockUVs[2, 2];
+                uv11 = blockUVs[2, 3];
             }
             else
             {
-                uv00 = blockUVs[(int)(bType+1), 0];
-                uv10 = blockUVs[(int)(bType+1), 1];
-                uv01 = blockUVs[(int)(bType+1), 2];
-                uv11 = blockUVs[(int)(bType+1), 3];
+                uv00 = blockUVs[1, 0];
+                uv10 = blockUVs[1, 1];
+                uv01 = blockUVs[1, 2];
+                uv11 = blockUVs[1, 3];
             }
             // sets cracked uvs
             suvs.Add(blockUVs[(int)(health + 1), 3]);
@@ -249,7 +251,7 @@ namespace CubeCreationEngine.Core
             mesh.vertices = verts;
             mesh.normals = normals;
             mesh.uv = uvs;
-            mesh.SetUVs(1, suvs);
+            //mesh.SetUVs(1, suvs);
             mesh.triangles = triangles;
             mesh.RecalculateBounds();
             // Creates the required components in the gameobject that this script is attached to, to show the created quad
