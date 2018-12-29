@@ -82,7 +82,7 @@ namespace CubeCreationEngine.Core
             Chunk c;
             if (chunks.TryGetValue(cn, out c))
             {
-                return c.chunkData[blx, bly, blz]; // accessing the block position
+                return c.dirtBlockChunkData[blx, bly, blz]; // accessing the block position
             }
             else
             {

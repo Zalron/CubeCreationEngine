@@ -19,9 +19,9 @@ public class ChunkMB: MonoBehaviour
         int y = (int)bpos.y;
         int z = (int)bpos.z;
 
-        if (owner.chunkData[x, y, z].bType != Block.BlockType.AIR)// if the block is not already destroyed then reset the block 
+        if (owner.dirtBlockChunkData[x, y, z].bType != Block.BlockType.AIR)// if the block is not already destroyed then reset the block 
         {
-            owner.chunkData[x, y, z].Reset();
+            owner.dirtBlockChunkData[x, y, z].Reset();
         }
     }
     public IEnumerator Drop(Block b, Block.BlockType bt, int maxdrop) // drops the block by moving it through the chunk until it hits the ground or reachs the drop limit
