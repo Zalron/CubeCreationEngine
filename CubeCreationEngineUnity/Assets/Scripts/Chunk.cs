@@ -39,6 +39,7 @@ namespace CubeCreationEngine.Core
         public GameObject fluid;
         public ChunkStatus status; 
         public float touchedTime;
+        public bool treesCreated;
         public ChunkMB mb; //the chunks monobehaviour script
         BlockData bd; // the class that handles saving the block data
         public bool changed = false; //checks of any changes to the blocks in the chunks
@@ -144,13 +145,21 @@ namespace CubeCreationEngine.Core
                         }
                         else if (worldY == surfaceHeight)
                         {
-                            chunkData[x, y, z] = new Block(Block.BlockType.GRASS, pos, chunk.gameObject, this);
+                            if (Utilities.fBM3D(worldX, worldY, worldZ, 0.4f, 2) < 0.4f)
+                            {
+                                chunkData[x, y, z] = new Block(Block.BlockType.WOODBASE, pos, chunk.gameObject, this);
+                            }
+                            else
+                            {
+                                chunkData[x, y, z] = new Block(Block.BlockType.GRASS, pos, chunk.gameObject, this);
+                            }
+                           
                         }
                         else if (worldY < surfaceHeight)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.DIRT, pos, chunk.gameObject, this);
                         }
-                        else if (worldY == surfaceHeight && worldY < Utilities.maxWaterSpawnHeight)
+                        else if (worldY == surfaceHeight && worldY <= Utilities.maxWaterSpawnHeight)
                         {
                             chunkData[x, y, z] = new Block(Block.BlockType.SAND, pos, chunk.gameObject, this);
                         }
@@ -184,6 +193,20 @@ namespace CubeCreationEngine.Core
         }
         public void DrawChunk()
         {
+            if (!treesCreated)
+            {
+                for (int z = 0; z < World.chunkSize; z++)
+                {
+                    for (int y = 0; y < World.chunkSize; y++)
+                    {
+                        for (int x = 0; x < World.chunkSize; x++)
+                        {
+                            BuildTrees(chunkData[x, y, z],x,y,z);
+                        }
+                    }
+                }
+                treesCreated = true;
+            }
             //Drawing soild and water blocks 
             for (int z = 0; z < World.chunkSize; z++)
             {
@@ -202,6 +225,46 @@ namespace CubeCreationEngine.Core
             // creating water material but not adding in the collider 
             CombineQuads(fluid.gameObject, fluidMaterial);
             status = ChunkStatus.DONE;
+        }
+        void BuildTrees(Block trunk, int x, int y, int z)//builds the tree from the woodbase
+        {
+            if (trunk.bType != Block.BlockType.WOODBASE)
+            {
+                return;
+            }
+            Block t = trunk.GetBlock(x, y + 1, z);
+            if (t != null)
+            {
+                t.SetType(Block.BlockType.WOOD);
+                Block t1 = t.GetBlock(x, y + 2, z);
+                if (t1 != null)
+                {
+                    t1.SetType(Block.BlockType.WOOD);
+                    for (int i = -1; i <= 1; i++)
+                    {
+                        for (int j = -1; j <= 1; j++)
+                        {
+                            for (int k = 3; k <=4; k++)
+                            {
+                                Block t2 = trunk.GetBlock(x + i, y + k, z + 1);
+                                if (t2 != null)
+                                {
+                                    t2.SetType(Block.BlockType.LEAVES);
+                                }
+                                else
+                                {
+                                    return;
+                                } 
+                            }
+                        }
+                    }
+                    Block t3 = t1.GetBlock(x, y + 5, z);
+                    if (t3 != null)
+                    {
+                        t3.SetType(Block.BlockType.LEAVES);
+                    }
+                }
+            }
         }
         public Chunk(){}
         public Chunk(Vector3 position, Material c, Material t) // constructor for the chunks

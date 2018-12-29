@@ -12,6 +12,9 @@ namespace CubeCreationEngine.Core
             DIRT,
             WATER,
             STONE,
+            LEAVES,
+            WOOD,
+            WOODBASE,
             SAND,
             GOLD,
             BEDROCK,
@@ -34,7 +37,7 @@ namespace CubeCreationEngine.Core
         // the amount of hits that the block can take
         // -1 is indistructible
         // 0 isn't a interactible block no value
-        public int[] blockHealthMax = { 3, 3, 8, 4, 2, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
+        public int[] blockHealthMax = { 3, 3, 8, 4, 1, 2, 2, 2, 4, -1, 4, 4, 0, 0, 0, 0, 0, 0 };
         // all of the uv variables
         Vector2[,] blockUVs = {
         {new Vector2( 0.125f, 0.375f ), new Vector2( 0.1875f, 0.375f),new Vector2( 0.125f, 0.4375f ),new Vector2( 0.1875f, 0.4375f )}, /*GRASS TOP*/
@@ -42,6 +45,9 @@ namespace CubeCreationEngine.Core
 		{new Vector2( 0.125f, 0.9375f ), new Vector2( 0.1875f, 0.9375f),new Vector2( 0.125f, 1.0f ),new Vector2( 0.1875f, 1.0f )}, /*DIRT*/
         {new Vector2( 0.875f, 0.125f ), new Vector2( 0.9375f, 0.125f),new Vector2( 0.875f, 0.1875f ),new Vector2( 0.9375f, 0.1875f )}, /*WATER*/
 		{new Vector2( 0, 0.875f ), new Vector2( 0.0625f, 0.875f),new Vector2( 0, 0.9375f ),new Vector2( 0.0625f, 0.9375f )}, /*STONE*/
+        {new Vector2( 0.0625f, 0.375f ), new Vector2( 0.125f, 0.375f),new Vector2( 0.0625f, 0.4375f ),new Vector2( 0.125f, 0.4375f )}, /*LEAVES*/
+        {new Vector2( 0.375f, 0.625f ), new Vector2( 0.4375f, 0.65f),new Vector2( 0.375f, 0.6875f ),new Vector2( 0.4375f, 0.6875f )}, /*WOOD*/
+        {new Vector2( 0.375f, 0.625f ), new Vector2( 0.4375f, 0.625f),new Vector2( 0.375f, 0.6875f ),new Vector2( 0.4375f, 0.6875f )}, /*WOODBASE*/
         {new Vector2( 0.125f, 0.875f ), new Vector2( 0.1875f, 0.875f),new Vector2( 0.125f, 0.9375f ),new Vector2( 0.1875f, 0.9375f )}, /*SAND*/
         {new Vector2( 0, 0.8125f ), new Vector2( 0.0625f, 0.8125f),new Vector2( 0, 0.875f ),new Vector2( 0.0625f, 0.0875f )}, /*GOLD*/
 		{new Vector2( 0.3125f, 0.8125f ), new Vector2( 0.375f, 0.8125f),new Vector2( 0.3125f, 0.875f ),new Vector2( 0.375f, 0.875f )}, /*BEDROCK*/	
@@ -255,13 +261,13 @@ namespace CubeCreationEngine.Core
         }
         int ConvertBlockIndexToLocal(int i) // converts the block index from other chunk into a index for this chunk
         {
-            if (i == -1)
+            if (i <= -1)
             {
                 i = World.chunkSize - 1;
             }
-            else if (i == World.chunkSize)
+            else if (i >= World.chunkSize)
             {
-                i = 0;
+                i = i-World.chunkSize;
             }
             return i;
         }
@@ -270,6 +276,19 @@ namespace CubeCreationEngine.Core
             Block[,,] chunks;
             if (x < 0 || x >= World.chunkSize || y < 0 || y >= World.chunkSize || z < 0 || z >= World.chunkSize) // checking for solid neighbour in other chunks
             {
+                int newX = x, newY = y, newZ = z;
+                if (x<0 || x >= World.chunkSize)
+                {
+                    newX = (x -(int)position.x)*World.chunkSize;
+                }
+                if (y < 0 || y >= World.chunkSize)
+                {
+                    newY = (y - (int)position.y) * World.chunkSize;
+                }
+                if (z < 0 || z >= World.chunkSize)
+                {
+                    newZ = (z - (int)position.z) * World.chunkSize;
+                }
                 Vector3 neighbourChunkPos = this.parent.transform.position + new Vector3((x - (int)position.x) * World.chunkSize, (y - (int)position.y) * World.chunkSize, (z - (int)position.z) * World.chunkSize);
                 string nName = World.BuildChunkName(neighbourChunkPos);
                 x = ConvertBlockIndexToLocal(x);
