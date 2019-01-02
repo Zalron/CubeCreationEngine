@@ -1,0 +1,374 @@
+﻿using System.IO;
+using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace VoxelPlay {
+
+	/// <summary>
+	/// A neutral / engine independent model definition. Basically an array of colors which specify voxels inside a model with specified size and optional center offset
+	/// </summary>
+	public struct ColorBasedModelDefinition {
+		public string name;
+		public int sizeX, sizeY, sizeZ;
+		public int offsetX, offsetY, offsetZ;
+
+		/// <summary>
+		/// Colors are arranged in Y/Z/X structure
+		/// </summary>
+		public Color32[] colors;
+
+		public static ColorBasedModelDefinition Null = new ColorBasedModelDefinition ();
+	}
+
+	public static class VoxelPlayConverter {
+
+		struct Cuboid {
+			public Bounds bounds;
+			public Color32 color;
+		}
+
+		struct Face {
+			public Vector3 center;
+			public Vector3 size;
+			public Vector3[] vertices;
+			public Vector3[] normals;
+			public Color32 color;
+
+			public Face (Vector3 center, Vector3 size, Vector3[] vertices, Vector3[] normals, Color32 color) {
+				this.center = center;
+				this.size = size;
+				this.vertices = vertices;
+				this.normals = normals;
+				this.color = color;
+			}
+
+
+			public static bool operator == (Face f1, Face f2) {
+				return f1.size == f2.size && f1.center == f2.center;
+			}
+
+			public static bool operator != (Face f1, Face f2) {
+				return f1.size != f2.size || f1.center != f2.center;
+			}
+
+			public override bool Equals (object obj) {
+				if (obj == null || !(obj is Face))
+					return false;
+				Face other = (Face)obj;
+				return size == other.size && center == other.center;
+			}
+
+			public override int GetHashCode () {
+				int hash = 23;
+				hash = hash * 31 + center.GetHashCode ();
+				hash = hash * 31 + size.GetHashCode ();
+				return hash;
+			}
+		}
+
+		static Vector3[] faceVerticesForward = new Vector3[] {
+			new Vector3 (0.5f, -0.5f, 0.5f),
+			new Vector3 (0.5f, 0.5f, 0.5f),
+			new Vector3 (-0.5f, -0.5f, 0.5f),
+			new Vector3 (-0.5f, 0.5f, 0.5f)
+		};
+		static Vector3[] faceVerticesBack = new Vector3[] {
+			new Vector3 (-0.5f, -0.5f, -0.5f),
+			new Vector3 (-0.5f, 0.5f, -0.5f),
+			new Vector3 (0.5f, -0.5f, -0.5f),
+			new Vector3 (0.5f, 0.5f, -0.5f)
+		};
+		static Vector3[] faceVerticesLeft = new Vector3[] {
+			new Vector3 (-0.5f, -0.5f, 0.5f),
+			new Vector3 (-0.5f, 0.5f, 0.5f),
+			new Vector3 (-0.5f, -0.5f, -0.5f),
+			new Vector3 (-0.5f, 0.5f, -0.5f)
+		};
+		static Vector3[] faceVerticesRight = new Vector3[] {
+			new Vector3 (0.5f, -0.5f, -0.5f),
+			new Vector3 (0.5f, 0.5f, -0.5f),
+			new Vector3 (0.5f, -0.5f, 0.5f),
+			new Vector3 (0.5f, 0.5f, 0.5f)
+		};
+		static Vector3[] faceVerticesTop = new Vector3[] {
+			new Vector3 (-0.5f, 0.5f, 0.5f),
+			new Vector3 (0.5f, 0.5f, 0.5f),
+			new Vector3 (-0.5f, 0.5f, -0.5f),
+			new Vector3 (0.5f, 0.5f, -0.5f)
+		};
+		static Vector3[] faceVerticesBottom = new Vector3[] {
+			new Vector3 (-0.5f, -0.5f, -0.5f),
+			new Vector3 (0.5f, -0.5f, -0.5f),
+			new Vector3 (-0.5f, -0.5f, 0.5f),
+			new Vector3 (0.5f, -0.5f, 0.5f)
+		};
+		static Vector3[] normalsBack = new Vector3[] {
+			Misc.vector3back, Misc.vector3back, Misc.vector3back, Misc.vector3back
+		};
+		static Vector3[] normalsForward = new Vector3[] {
+			Misc.vector3forward, Misc.vector3forward, Misc.vector3forward, Misc.vector3forward
+		};
+		static Vector3[] normalsLeft = new Vector3[] {
+			Misc.vector3left, Misc.vector3left, Misc.vector3left, Misc.vector3left
+		};
+		static Vector3[] normalsRight = new Vector3[] {
+			Misc.vector3right, Misc.vector3right, Misc.vector3right, Misc.vector3right
+		};
+		static Vector3[] normalsUp = new Vector3[] {
+			Misc.vector3up, Misc.vector3up, Misc.vector3up, Misc.vector3up
+		};
+		static Vector3[] normalsDown = new Vector3[] {
+			Misc.vector3down, Misc.vector3down, Misc.vector3down, Misc.vector3down
+		};
+
+
+		public static ModelDefinition GetModelDefinition (VoxelDefinition voxelTemplate, ColorBasedModelDefinition model, bool ignoreOffset, ColorToVoxelMap colorMap = null) {
+			ModelDefinition md = ScriptableObject.CreateInstance<ModelDefinition> ();
+			md.sizeX = model.sizeX;
+			md.sizeY = model.sizeY;
+			md.sizeZ = model.sizeZ;
+			if (!ignoreOffset) {
+				md.offsetX = model.offsetX;
+				md.offsetY = model.offsetY;
+				md.offsetZ = model.offsetZ;
+			}
+			if (colorMap != null && voxelTemplate == null) {
+				voxelTemplate = colorMap.defaultVoxelDefinition;
+
+			}
+			List<ModelBit> bits = new List<ModelBit> ();
+			for (int y = 0; y < model.sizeY; y++) {
+				int posy = y * model.sizeX * model.sizeZ;
+				for (int z = 0; z < model.sizeZ; z++) {
+					int posz = z * model.sizeX;
+					for (int x = 0; x < model.sizeX; x++) {
+						int index = posy + posz + x;
+						if (model.colors [index].a > 0) {
+							ModelBit bit = new ModelBit ();
+							bit.voxelIndex = index;
+							if (colorMap != null) {
+								bit.voxelDefinition = colorMap.GetVoxelDefinition (model.colors [index], voxelTemplate);
+								bit.color = Misc.color32White;
+							} else {
+								bit.voxelDefinition = voxelTemplate;
+								bit.color = model.colors [index];
+							}
+							bits.Add (bit);
+						}
+					}
+				}
+			}
+			md.bits = bits.ToArray ();
+			return md;
+		}
+
+		public static ColorToVoxelMap GetColorToVoxelMapDefinition(ColorBasedModelDefinition model) {
+			ColorToVoxelMap mapping = ScriptableObject.CreateInstance<ColorToVoxelMap> ();
+			List<Color32> uniqueColors = new List<Color32>();
+			Color32 prevColor = Misc.color32Transparent;
+			for (int k=0;k<model.colors.Length;k++) {
+				Color32 color = model.colors[k];
+				if (color.a==0 || (color.r == prevColor.r && color.g == prevColor.g && color.b==prevColor.b && color.a == prevColor.a)) continue;
+				if (!uniqueColors.Contains (color)) {
+					uniqueColors.Add (color);
+				}
+			}
+			int colorCount = uniqueColors.Count;
+			mapping.colorMap = new ColorToVoxelMapEntry[colorCount];
+			for (int k = 0; k < colorCount; k++) {
+				mapping.colorMap [k].color = uniqueColors [k];
+			}
+			return mapping;
+		}
+
+
+		static List<Vector3> vertices = new List<Vector3> ();
+		static List<int> indices = new List<int> ();
+		static List<Vector3> normals = new List<Vector3> ();
+		static List<Color32> meshColors = new List<Color32> ();
+		static Cuboid[] cuboids = new Cuboid[128];
+		static Material litMat;
+
+		public static GameObject GenerateVoxelObject(Color32[] colors, int sizeX, int sizeY, int sizeZ, Vector3 offset, Vector3 scale) {
+
+			int index;
+			int ONE_Y_ROW = sizeZ * sizeX;
+			int ONE_Z_ROW = sizeX;
+
+			Vector3 center;
+			Cuboid cuboid = new Cuboid ();
+			int cuboidsCount = 0;
+			for (int y = 0; y < sizeY; y++) {
+				int posy = y * ONE_Y_ROW;
+				for (int z = 0; z < sizeZ; z++) {
+					int posz = z * ONE_Z_ROW;
+					for (int x = 0; x < sizeX; x++) {
+						index = posy + posz + x;
+						Color32 color = colors [index];
+						if (color.a > 0) {
+							center.x = x - sizeX / 2 - 0.5f + offset.x;
+							center.y = y + 0.5f + offset.y;
+							center.z = z - sizeZ / 2 - 0.5f + offset.z;
+							cuboid.bounds = new Bounds (center, Misc.vector3one);
+							cuboid.color = color;
+							if (cuboidsCount >= cuboids.Length) {
+								Cuboid[] newCuboids = new Cuboid[cuboidsCount * 2];
+								System.Array.Copy (cuboids, newCuboids, cuboids.Length);
+								cuboids = newCuboids;
+							}
+							cuboids [cuboidsCount++] = cuboid;
+						}
+					}
+				}
+			}
+
+			// Optimization 1: Fusion same color cuboids
+			bool repeat = true;
+			while (repeat) {
+				repeat = false;
+				for (int k = 0; k < cuboidsCount; k++) {
+					if (cuboids [k].color.a == 0)
+						continue;
+					for (int j = k + 1; j < cuboidsCount; j++) {
+						if (cuboids [j].color.a == 0)
+							continue;
+						if (cuboids [k].color.r == cuboids [j].color.r && cuboids [k].color.b == cuboids [j].color.b && cuboids [k].color.g == cuboids [j].color.g) {
+							bool touching = false;
+							Bounds f1 = cuboids [k].bounds;
+							Bounds f2 = cuboids [j].bounds;
+							// Touching back or forward faces?
+							if (f1.min.x == f2.min.x && f1.max.x == f2.max.x && f1.min.y == f2.min.y && f1.max.y == f2.max.y) {
+								touching = f1.min.z == f2.max.z || f1.max.z == f2.min.z;
+								// ... left or right faces?
+							} else if (f1.min.z == f2.min.z && f1.max.z == f2.max.z && f1.min.y == f2.min.y && f1.max.y == f2.max.y) {
+								touching = f1.min.x == f2.max.x || f1.max.x == f2.min.x;
+								// ... top or bottom faces?
+							} else if (f1.min.x == f2.min.x && f1.max.x == f2.max.x && f1.min.z == f2.min.z && f1.max.z == f2.max.z) {
+								touching = f1.min.y == f2.max.y || f1.max.y == f2.min.y;
+							}
+							if (touching) {
+								cuboids [k].bounds.Encapsulate (cuboids [j].bounds);
+								cuboids [j].color.a = 0;	// mark as deleted
+								repeat = true;
+							}
+						}
+					}
+				}
+			}
+
+			// Optimization 2: Remove hidden cuboids
+			for (int k = 0; k < cuboidsCount; k++) {
+				if (cuboids [k].color.a == 0)
+					continue;
+				for (int j = k + 1; j < cuboidsCount; j++) {
+					if (cuboids [j].color.a == 0)
+						continue;
+					int occlusion = 0;
+					Bounds f1 = cuboids [k].bounds;
+					Bounds f2 = cuboids [j].bounds;
+					// Touching back or forward faces?
+					if (f1.min.x >= f2.min.x && f1.max.x <= f2.max.x && f1.min.y >= f2.min.y && f1.max.y <= f2.max.y) {
+						if (f1.min.z == f2.max.z)
+							occlusion++;
+						if (f1.max.z == f2.min.z)
+							occlusion++;
+						// ... left or right faces?
+					} else if (f1.min.z >= f2.min.z && f1.max.z <= f2.max.z && f1.min.y >= f2.min.y && f1.max.y <= f2.max.y) {
+						if (f1.min.x == f2.max.x)
+							occlusion++;
+						if (f1.max.x == f2.min.x)
+							occlusion++;
+						// ... top or bottom faces?
+					} else if (f1.min.x >= f2.min.x && f1.max.x <= f2.max.x && f1.min.z >= f2.min.z && f1.max.z <= f2.max.z) {
+						if (f1.min.y == f2.max.y)
+							occlusion++;
+						if (f1.max.y == f2.min.y)
+							occlusion++;
+					}
+					if (occlusion == 6) {
+						cuboids [k].color.a = 0;
+						break;
+					}
+				}
+			}
+
+			// Optimization 3: Fragment cuboids into faces and remove duplicates
+			List<Face> faces = new List<Face> ();
+			for (int k = 0; k < cuboidsCount; k++) {
+				if (cuboids [k].color.a == 0)
+					continue;
+				Vector3 min = cuboids [k].bounds.min;
+				Vector3 max = cuboids [k].bounds.max;
+				Vector3 size = cuboids [k].bounds.size;
+				Face top = new Face (new Vector3 ((min.x + max.x) * 0.5f, max.y, (min.z + max.z) * 0.5f), new Vector3 (size.x, 0, size.z), faceVerticesTop, normalsUp, cuboids [k].color);
+				RemoveDuplicateOrAddFace (faces, top);
+				Face bottom = new Face (new Vector3 ((min.x + max.x) * 0.5f, min.y, (min.z + max.z) * 0.5f), new Vector3 (size.x, 0, size.z), faceVerticesBottom, normalsDown, cuboids [k].color);
+				RemoveDuplicateOrAddFace (faces, bottom);
+				Face left = new Face (new Vector3 (min.x, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f), new Vector3 (0, size.y, size.z), faceVerticesLeft, normalsLeft, cuboids [k].color);
+				RemoveDuplicateOrAddFace (faces, left);
+				Face right = new Face (new Vector3 (max.x, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f), new Vector3 (0, size.y, size.z), faceVerticesRight, normalsRight, cuboids [k].color);
+				RemoveDuplicateOrAddFace (faces, right);
+				Face back = new Face (new Vector3 ((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, min.z), new Vector3 (size.x, size.y, 0), faceVerticesBack, normalsBack, cuboids [k].color);
+				RemoveDuplicateOrAddFace (faces, back);
+				Face forward = new Face (new Vector3 ((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, max.z), new Vector3 (size.x, size.y, 0), faceVerticesForward, normalsForward, cuboids [k].color);
+				RemoveDuplicateOrAddFace (faces, forward);
+			}
+
+			// Create geometry & uv mapping
+			int facesCount = faces.Count;
+			vertices.Clear ();
+			indices.Clear ();
+			normals.Clear ();
+			meshColors.Clear ();
+			index = 0;
+			for (int k = 0; k < facesCount; k++, index += 4) {
+				Face face = faces [k];
+				Vector3 faceVertex;
+				for (int j = 0; j < 4; j++) {
+					faceVertex.x = (face.center.x + face.vertices [j].x * face.size.x) * scale.x;
+					faceVertex.y = (face.center.y + face.vertices [j].y * face.size.y) * scale.y;
+					faceVertex.z = (face.center.z + face.vertices [j].z * face.size.z) * scale.z;
+					vertices.Add (faceVertex);
+					meshColors.Add (face.color);
+				}
+				normals.AddRange (face.normals);
+				indices.Add (index);
+				indices.Add (index + 1);
+				indices.Add (index + 2);
+				indices.Add (index + 3);
+				indices.Add (index + 2);
+				indices.Add (index + 1);
+			}
+
+			Mesh mesh = new Mesh ();
+			mesh.SetVertices (vertices);
+			mesh.SetNormals (normals);
+			mesh.SetTriangles (indices, 0);
+			mesh.SetColors (meshColors);
+			mesh.RecalculateBounds ();
+
+			GameObject obj = new GameObject ("Model");
+			MeshFilter mf = obj.AddComponent<MeshFilter> ();
+			mf.mesh = mesh;
+			MeshRenderer mr = obj.AddComponent<MeshRenderer> ();
+			if (litMat == null) {
+				litMat = GameObject.Instantiate<Material>(Resources.Load<Material> ("VoxelPlay/Materials/VP Model VertexLit"));
+			} 
+			mr.sharedMaterial = litMat;
+
+			return obj;
+		}
+
+		static void RemoveDuplicateOrAddFace (List<Face> faces, Face face) {
+			int index = faces.IndexOf (face);
+			if (index >= 0)
+				faces.RemoveAt (index);
+			else
+				faces.Add (face);
+		}
+
+	}
+
+}

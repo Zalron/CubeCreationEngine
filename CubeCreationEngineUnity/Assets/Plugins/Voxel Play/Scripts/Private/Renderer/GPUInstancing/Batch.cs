@@ -1,0 +1,36 @@
+﻿using System;
+using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+
+namespace VoxelPlay.GPUInstancing {
+
+	class Batch {
+		public static int MAX_INSTANCES = 1023;
+		public Matrix4x4[] matrices;
+		public Vector4[] color;
+		public float[] light;
+		public int instancesCount;
+		public MaterialPropertyBlock materialPropertyBlock;
+
+		public Batch() {
+			Init ();
+		}
+
+		public void Init() {
+			instancesCount = 0;
+			if (matrices == null) {
+				matrices = new Matrix4x4[MAX_INSTANCES];
+				color = new Vector4[MAX_INSTANCES];
+				light = new float[MAX_INSTANCES];
+				materialPropertyBlock = new MaterialPropertyBlock ();
+			}
+			materialPropertyBlock.Clear ();
+		}
+	}
+
+}

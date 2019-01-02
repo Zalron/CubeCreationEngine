@@ -35,6 +35,11 @@ namespace CubeCreationEngine.Core
         public Material cubeMaterial;
         public Material fluidMaterial;
         public DirtBlock[,,] dirtBlockChunkData; // a three dimensional variable that stores all of the chunks blocks positions
+        public AirBlock[,,] airBlockChunkData; // a three dimensional variable that stores all of the chunks blocks positions
+        public StoneBlock[,,] stoneBlockChunkData; // a three dimensional variable that stores all of the chunks blocks positions
+        public GrassBlock[,,] grassBlockChunkData; // a three dimensional variable that stores all of the chunks blocks positions
+        public WaterBlock[,,] waterBlockChunkData; // a three dimensional variable that stores all of the chunks blocks positions
+        //public DirtBlock[,,] dirtBlockChunkData; // a three dimensional variable that stores all of the chunks blocks positions
         public GameObject chunk; // the chunks gameobject 
         public GameObject fluid;
         public ChunkStatus status; 
@@ -71,7 +76,7 @@ namespace CubeCreationEngine.Core
             }
             BinaryFormatter bf = new BinaryFormatter();
             FileStream file = File.Open(chunkFile, FileMode.OpenOrCreate);
-            bd = new BlockData(dirtBlockChunkData);
+            //bd = new BlockData(dirtBlockChunkData);
             bf.Serialize(file, bd); // writing the data
             file.Close();
             //Debug.Log("Saving chunk from file: " + chunkFile);
@@ -84,7 +89,7 @@ namespace CubeCreationEngine.Core
                 {
                     for (int x = 0; x < World.chunkSize; x++)
                     {
-                        mb.StartCoroutine(mb.Drop(dirtBlockChunkData[x,y,z], Block.BlockType.SAND, 20));
+                        //mb.StartCoroutine(mb.Drop(dirtBlockChunkData[x,y,z], Block.BlockType.SAND, 20));
                     }
                 }
             }
@@ -95,7 +100,7 @@ namespace CubeCreationEngine.Core
             dataFromFile = Load(); // first we load data from a save file
             //touchedTime = Time.time;
             // Declaring the chunkData array
-            dirtBlockChunkData = new DirtBlock[World.chunkSize, World.chunkSize, World.chunkSize];
+            //dirtBlockChunkData = new DirtBlock[World.chunkSize, World.chunkSize, World.chunkSize];
             //Creating the blocks
             for (int z = 0; z < World.chunkSize; z++)
             {
@@ -118,58 +123,58 @@ namespace CubeCreationEngine.Core
                         int waterHeight = 490;
                         if (worldY == 0)
                         {
-                            dirtBlockChunkData[x, y, z] = new BedrockBlock(pos, chunk.gameObject, cubeMaterial);
+                            //dirtBlockChunkData[x, y, z] = new BedrockBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         else if (worldY <= Utilities.GenerateStoneHeight(worldX, worldZ))
                         {
                             if (Utilities.fBM3D(worldX, worldY, worldZ, 0.01f, 2) < 0.4f && worldY < Utilities.maxDiamondSpawnHeight)
                             {
-                                dirtBlockChunkData[x, y, z] = new DiamondBlock(pos, chunk.gameObject, cubeMaterial);
+                                //dirtBlockChunkData[x, y, z] = new DiamondBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.03f, 3) < 0.41f && worldY < 40)
                             {
-                                dirtBlockChunkData[x, y, z] = new RedStoneBlock(pos, chunk.gameObject, cubeMaterial);
+                                //dirtBlockChunkData[x, y, z] = new RedStoneBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else if (Utilities.fBM3D(worldX, worldY, worldZ, 0.03f, 3) < 0.41f && worldY < 80)
                             {
-                                dirtBlockChunkData[x, y, z] = new GoldBlock(pos, chunk.gameObject, cubeMaterial);
+                                //dirtBlockChunkData[x, y, z] = new GoldBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else
                             {
-                                dirtBlockChunkData[x, y, z] = new StoneBlock(pos, chunk.gameObject, cubeMaterial);
+                                //dirtBlockChunkData[x, y, z] = new StoneBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                         }
                         else if (worldY == surfaceHeight)
                         {
                             if (Utilities.fBM3D(worldX, worldY, worldZ, 0.4f, 2) < 0.4f)
                             {
-                                dirtBlockChunkData[x, y, z] = new WoodBaseBlock(pos, chunk.gameObject, cubeMaterial);
+                                //dirtBlockChunkData[x, y, z] = new WoodBaseBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                             else
                             {
-                                dirtBlockChunkData[x, y, z] = new DirtBlock(pos, chunk.gameObject, cubeMaterial);
+                                //dirtBlockChunkData[x, y, z] = new DirtBlock(pos, chunk.gameObject, cubeMaterial);
                             }
                            
                         }
                         else if (worldY < surfaceHeight)
                         {
-                            dirtBlockChunkData[x, y, z] = new GrassBlock(pos, chunk.gameObject, cubeMaterial);
+                            //dirtBlockChunkData[x, y, z] = new GrassBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         else if (worldY == surfaceHeight && worldY <= Utilities.maxWaterSpawnHeight)
                         {
-                            dirtBlockChunkData[x, y, z] = new SandBlock(pos, chunk.gameObject, cubeMaterial);
+                            //dirtBlockChunkData[x, y, z] = new SandBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         else if (worldY < Utilities.maxWaterSpawnHeight)
                         {
-                            dirtBlockChunkData[x, y, z] = new WaterBlock(pos, fluid.gameObject, fluidMaterial);
+                            waterBlockChunkData[x, y, z] = new WaterBlock(pos, fluid.gameObject, fluidMaterial);
                         }
                         else
                         {
-                            dirtBlockChunkData[x, y, z] = new AirBlock(pos, chunk.gameObject, cubeMaterial);
+                            airBlockChunkData[x, y, z] = new AirBlock(pos, chunk.gameObject, cubeMaterial);
                         }
-                        if (dirtBlockChunkData[x,y,z].bType != Block.BlockType.WATER && Utilities.fBM3D(worldX, worldY, worldZ, 0.1f, 3) < 0.42f)
+                        if (airBlockChunkData[x,y,z].bType != Block.BlockType.WATER && Utilities.fBM3D(worldX, worldY, worldZ, 0.1f, 3) < 0.42f)
                         {
-                            dirtBlockChunkData[x, y, z] = new AirBlock(pos, chunk.gameObject, cubeMaterial);
+                            airBlockChunkData[x, y, z] = new AirBlock(pos, chunk.gameObject, cubeMaterial);
                         }
                         //if(worldY < Utilities.maxWaterSpawnHeight && chunk)
                         status = ChunkStatus.DRAW;
@@ -197,7 +202,7 @@ namespace CubeCreationEngine.Core
                     {
                         for (int x = 0; x < World.chunkSize; x++)
                         {
-                            BuildTrees(dirtBlockChunkData[x, y, z],x,y,z);
+                            //BuildTrees(dirtBlockChunkData[x, y, z],x,y,z);
                         }
                     }
                 }
@@ -210,7 +215,7 @@ namespace CubeCreationEngine.Core
                 {
                     for (int x = 0; x < World.chunkSize; x++)
                     {
-                        dirtBlockChunkData[x, y, z].Draw();
+                        //dirtBlockChunkData[x, y, z].Draw();
                     }
                 }
             }
