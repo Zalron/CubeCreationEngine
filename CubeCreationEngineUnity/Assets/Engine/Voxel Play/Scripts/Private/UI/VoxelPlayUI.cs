@@ -19,7 +19,7 @@ namespace VoxelPlay {
 		public event OnConsoleEvent OnConsoleNewMessage;
 
 		/// <summary>
-		/// Triggered whhen a new command is entered by the user
+		/// Triggered when a new command is entered by the user
 		/// </summary>
 		public event OnConsoleEvent OnConsoleNewCommand;
 
