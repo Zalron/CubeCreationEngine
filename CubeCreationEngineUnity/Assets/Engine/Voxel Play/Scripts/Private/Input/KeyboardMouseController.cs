@@ -26,27 +26,30 @@ namespace VoxelPlay
 
 			// Left mouse button
 			if (Input.GetMouseButtonDown (0)) {
-				buttons [(int)InputButtonNames.Button1] = InputButtonState.Down;
+				buttons [(int)InputButtonNames.Button1].pressStartTime = Time.time;
+				buttons [(int)InputButtonNames.Button1].pressState = InputButtonPressState.Down;
 			} else if (Input.GetMouseButtonUp (0)) {
-				buttons [(int)InputButtonNames.Button1] = InputButtonState.Up;
+				buttons [(int)InputButtonNames.Button1].pressState = InputButtonPressState.Up;
 			} else if (Input.GetMouseButton(0)) {
-				buttons [(int)InputButtonNames.Button1] = InputButtonState.Pressed;
+				buttons [(int)InputButtonNames.Button1].pressState = InputButtonPressState.Pressed;
 			}
 			// Right mouse button
 			if (Input.GetMouseButtonDown (1)) {
-				buttons [(int)InputButtonNames.Button2] = InputButtonState.Down;
+				buttons [(int)InputButtonNames.Button2].pressStartTime = Time.time;
+				buttons [(int)InputButtonNames.Button2].pressState = InputButtonPressState.Down;
 			} else if (Input.GetMouseButtonUp (1)) {
-				buttons [(int)InputButtonNames.Button2] = InputButtonState.Up;
+				buttons [(int)InputButtonNames.Button2].pressState = InputButtonPressState.Up;
 			} else if (Input.GetMouseButton (1)) {
-				buttons [(int)InputButtonNames.Button2] = InputButtonState.Pressed;
+				buttons [(int)InputButtonNames.Button2].pressState = InputButtonPressState.Pressed;
 			}
 			// Middle mouse button
 			if (Input.GetMouseButtonDown (2)) {
-				buttons [(int)InputButtonNames.MiddleButton] = InputButtonState.Down;
+				buttons [(int)InputButtonNames.MiddleButton].pressStartTime = Time.time;
+				buttons [(int)InputButtonNames.MiddleButton].pressState = InputButtonPressState.Down;
 			} else if (Input.GetMouseButtonUp (2)) {
-				buttons [(int)InputButtonNames.MiddleButton] = InputButtonState.Up;
+				buttons [(int)InputButtonNames.MiddleButton].pressState = InputButtonPressState.Up;
 			} else if (Input.GetMouseButton (2)) {
-				buttons [(int)InputButtonNames.MiddleButton] = InputButtonState.Pressed;
+				buttons [(int)InputButtonNames.MiddleButton].pressState = InputButtonPressState.Pressed;
 			}
 			// Jump key
 			ReadButtonState(InputButtonNames.Jump, "Jump");

@@ -7,11 +7,9 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 
-namespace VoxelPlay
-{
+namespace VoxelPlay {
 
-	public partial class VoxelPlayEnvironment : MonoBehaviour
-	{
+	public partial class VoxelPlayEnvironment : MonoBehaviour {
 
 		// Chunk Creation helpers for non-geometry shaders
 		static Vector3[] faceVerticesForward = new Vector3[] {
@@ -56,12 +54,12 @@ namespace VoxelPlay
 			new Vector3 (-0.5f, 0.5f, 0.5f),
 			new Vector3 (0.5f, 0.5f, 0.5f),
 		};
-//		static Vector3[] faceVerticesBottom = new Vector3[] {
-//			new Vector3 (-0.5f, -0.5f, -0.5f),
-//			new Vector3 (0.5f, -0.5f, -0.5f),
-//			new Vector3 (-0.5f, -0.5f, 0.5f),
-//			new Vector3 (0.5f, -0.5f, 0.5f)
-//		};
+		//		static Vector3[] faceVerticesBottom = new Vector3[] {
+		//			new Vector3 (-0.5f, -0.5f, -0.5f),
+		//			new Vector3 (0.5f, -0.5f, -0.5f),
+		//			new Vector3 (-0.5f, -0.5f, 0.5f),
+		//			new Vector3 (0.5f, -0.5f, 0.5f)
+		//		};
 		static Vector3[] faceVerticesBottom = new Vector3[] {
 			new Vector3 (0.5f, -0.5f, -0.5f),
 			new Vector3 (0.5f, -0.5f, 0.5f),
@@ -107,8 +105,7 @@ namespace VoxelPlay
 		/// </summary>
 		/// <param name="chunk">Chunk.</param>
 		/// <param name="forceClearLightmap">If set to <c>true</c> force clear lightmap.</param>
-		void GenerateMeshData_Triangle (int jobIndex)
-		{
+		void GenerateMeshData_Triangle (int jobIndex) {
 
 			VoxelChunk chunk = meshJobs [jobIndex].chunk;
 			tempChunkVertices = meshJobs [jobIndex].vertices;
@@ -315,7 +312,7 @@ namespace VoxelPlay
 								waterVoxelsCount++;
 
 								// Get corners heights
-								int light = voxels [voxelIndex].light << 4;
+								int light = voxels [voxelIndex].light << 13;
 								int flow = noflow;
 								int hf = chunk_middle_forward_middle [middle_forward_middle].GetWaterLevel ();
 								int hb = chunk_middle_back_middle [middle_back_middle].GetWaterLevel ();
@@ -324,15 +321,16 @@ namespace VoxelPlay
 								int th = chunk_top_middle_middle [top_middle_middle].GetWaterLevel ();
 								int wh = voxels [voxelIndex].GetWaterLevel ();
 
-								int hfr, hbr, hfl, hbl;
+								int corner_height_fr, corner_height_br, corner_height_fl, corner_height_bl;
+								int hfr = 0, hbr = 0, hbl = 0, hfl = 0;
 								// If there's water on top, full size
 								if (th > 0) {
-									hfr = hbr = hfl = hbl = 15;
+									corner_height_fr = corner_height_br = corner_height_fl = corner_height_bl = 15;
 								} else {
-									hfr = chunk_middle_forward_right [middle_forward_right].GetWaterLevel ();
-									hbr = chunk_middle_back_right [middle_back_right].GetWaterLevel ();
-									hbl = chunk_middle_back_left [middle_back_left].GetWaterLevel ();
-									hfl = chunk_middle_forward_left [middle_forward_left].GetWaterLevel ();
+									hfr = corner_height_fr = chunk_middle_forward_right [middle_forward_right].GetWaterLevel ();
+									hbr = corner_height_br = chunk_middle_back_right [middle_back_right].GetWaterLevel ();
+									hbl = corner_height_bl = chunk_middle_back_left [middle_back_left].GetWaterLevel ();
+									hfl = corner_height_fl = chunk_middle_forward_left [middle_forward_left].GetWaterLevel ();
 
 									int tf = chunk_top_forward_middle [top_forward_middle].GetWaterLevel ();
 									int tfr = chunk_top_forward_right [top_forward_right].GetWaterLevel ();
@@ -344,48 +342,48 @@ namespace VoxelPlay
 									int tfl = chunk_top_forward_left [top_forward_left].GetWaterLevel ();
 
 									// forward right corner
-									if (tf * hf + tfr * hfr + tr * hr > 0) {
-										hfr = 15;
+									if (tf * hf + tfr * corner_height_fr + tr * hr > 0) {
+										corner_height_fr = 15;
 									} else {
-										hfr = wh > hfr ? wh : hfr;
-										if (hf > hfr)
-											hfr = hf;
-										if (hr > hfr)
-											hfr = hr;
+										corner_height_fr = wh > corner_height_fr ? wh : corner_height_fr;
+										if (hf > corner_height_fr)
+											corner_height_fr = hf;
+										if (hr > corner_height_fr)
+											corner_height_fr = hr;
 									}
 									// bottom right corner
-									if (tr * hr + tbr * hbr + tb * hb > 0) {
-										hbr = 15;
+									if (tr * hr + tbr * corner_height_br + tb * hb > 0) {
+										corner_height_br = 15;
 									} else {
-										hbr = wh > hbr ? wh : hbr;
-										if (hr > hbr)
-											hbr = hr;
-										if (hb > hbr)
-											hbr = hb;
+										corner_height_br = wh > corner_height_br ? wh : corner_height_br;
+										if (hr > corner_height_br)
+											corner_height_br = hr;
+										if (hb > corner_height_br)
+											corner_height_br = hb;
 									}
 									// bottom left corner
-									if (tb * hb + tbl * hbl + tl * hl > 0) {
-										hbl = 15;
+									if (tb * hb + tbl * corner_height_bl + tl * hl > 0) {
+										corner_height_bl = 15;
 									} else {
-										hbl = wh > hbl ? wh : hbl;
-										if (hb > hbl)
-											hbl = hb;
-										if (hl > hbl)
-											hbl = hl;
+										corner_height_bl = wh > corner_height_bl ? wh : corner_height_bl;
+										if (hb > corner_height_bl)
+											corner_height_bl = hb;
+										if (hl > corner_height_bl)
+											corner_height_bl = hl;
 									}
 									// forward left corner
-									if (tl * hl + tfl * hfl + tf * hf > 0) {
-										hfl = 15;
+									if (tl * hl + tfl * corner_height_fl + tf * hf > 0) {
+										corner_height_fl = 15;
 									} else {
-										hfl = wh > hfl ? wh : hfl;
-										if (hl > hfl)
-											hfl = hl;
-										if (hf > hfl)
-											hfl = hf;
+										corner_height_fl = wh > corner_height_fl ? wh : corner_height_fl;
+										if (hl > corner_height_fl)
+											corner_height_fl = hl;
+										if (hf > corner_height_fl)
+											corner_height_fl = hf;
 									}
 
 									// flow
-									int fx = hfr + hbr - hfl - hbl;
+									int fx = corner_height_fr + corner_height_br - corner_height_fl - corner_height_bl;
 									if (fx < 0)
 										flow = 2 << 10;
 									else if (fx == 0)
@@ -393,7 +391,7 @@ namespace VoxelPlay
 									else
 										flow = 0;
 									
-									int fz = hfl + hfr - hbl - hbr;
+									int fz = corner_height_fl + corner_height_fr - corner_height_bl - corner_height_br;
 									if (fz > 0)
 										flow += 2 << 8;
 									else if (fz == 0)
@@ -409,44 +407,61 @@ namespace VoxelPlay
 										foam = 1;
 									}
 								} else {
-									AddFaceWater (faceVerticesBack, normalsBack, pos, waterIndices, type.textureIndexSide, light + noflow, 0, hbl, 0, hbr, tintColor);
+									AddFaceWater (faceVerticesBack, normalsBack, pos, waterIndices, type.textureIndexSide, light + noflow, 0, corner_height_bl, 0, corner_height_br, tintColor);
 								}
 
 								// front face
 								occ = chunk_middle_forward_middle [middle_forward_middle].hasContent;
-								if (occ == 1)  {
+								if (occ == 1) {
 									if (hf == 0) {
-										foam += 2;
+										foam |= 2;
 									}
 								} else {
-									AddFaceWater (faceVerticesForward, normalsForward, pos, waterIndices, type.textureIndexSide, light + noflow, 0, hfr, 0, hfl, tintColor);
+									AddFaceWater (faceVerticesForward, normalsForward, pos, waterIndices, type.textureIndexSide, light + noflow, 0, corner_height_fr, 0, corner_height_fl, tintColor);
 								}
 
 								// left face
 								occ = chunk_middle_middle_left [middle_middle_left].hasContent;
 								if (occ == 1) {
 									if (hl == 0) {
-										foam += 4;
+										foam |= 4;
 									}
 								} else {
-									AddFaceWater (faceVerticesLeft, normalsLeft, pos, waterIndices, type.textureIndexSide, light + noflow, 0, hfl, 0, hbl, tintColor);
+									AddFaceWater (faceVerticesLeft, normalsLeft, pos, waterIndices, type.textureIndexSide, light + noflow, 0, corner_height_fl, 0, corner_height_bl, tintColor);
 								}
 
 								// right face
 								occ = chunk_middle_middle_right [middle_middle_right].hasContent;
 								if (occ == 1) {
 									if (hr == 0) {
-										foam += 8;
+										foam |= 8;
 									}
 								} else {
-									AddFaceWater (faceVerticesRight, normalsRight, pos, waterIndices, type.textureIndexSide, light + noflow, 0, hbr, 0, hfr, tintColor);
+									AddFaceWater (faceVerticesRight, normalsRight, pos, waterIndices, type.textureIndexSide, light + noflow, 0, corner_height_br, 0, corner_height_fr, tintColor);
 								}
 
 								// top (hide only if water level is full or voxel on top is water)
 								occ = chunk_top_middle_middle [top_middle_middle].hasContent;
 								if (occ != 1 || (wh < 15 && th == 0)) {
-									AddFaceWater (faceVerticesTop, normalsUp, pos, waterIndices, type.textureIndexSide, light + foam + flow, hbl, hfl, hbr, hfr, tintColor);
-									AddFaceWater (faceVerticesTopFlipped, normalsUp, pos, waterIndices, type.textureIndexSide, light + foam + flow, hbl, hfl, hbr, hfr, tintColor);
+									if (type.showFoam) {
+										// corner foam
+										if (hbl == 0) {
+											foam |= chunk_middle_back_left [middle_back_left].hasContent << 4;
+										}
+										if (hfl == 0) {
+											foam |= chunk_middle_forward_left [middle_forward_left].hasContent << 5;
+										}
+										if (hfr == 0) {
+											foam |= chunk_middle_forward_right [middle_forward_right].hasContent << 6;
+										}
+										if (hbr == 0) {
+											foam |= chunk_middle_back_right [middle_back_right].hasContent << 7;
+										}
+									} else {
+										foam = 0;
+									}
+									AddFaceWater (faceVerticesTop, normalsUp, pos, waterIndices, type.textureIndexSide, light + foam + flow, corner_height_bl, corner_height_fl, corner_height_br, corner_height_fr, tintColor);
+									AddFaceWater (faceVerticesTopFlipped, normalsUp, pos, waterIndices, type.textureIndexSide, light + foam + flow, corner_height_bl, corner_height_fl, corner_height_br, corner_height_fr, tintColor);
 								}
 
 								// bottom
@@ -687,7 +702,6 @@ namespace VoxelPlay
 									denseTreeCheck = denseTrees;
 									float random = WorldRand.GetValue (pos);
 									aoBase *= 1f + (random - 0.45f) * type.colorVariation;
-									//aoBase *= 0.8f + random * 0.4f;  // adds color variation
 									if (type.windAnimation)
 										windAnimation = 65536;
 								}
@@ -988,8 +1002,7 @@ namespace VoxelPlay
 			meshJobs [jobIndex].mivs = mivs;
 		}
 
-		void AddFaceWithAO (Vector3[] faceVertices, Vector3[] normals, Vector3 pos, List<int> indices, int textureIndex, float w0, float w1, float w2, float w3, bool flipAO, Color32 tintColor)
-		{
+		void AddFaceWithAO (Vector3[] faceVertices, Vector3[] normals, Vector3 pos, List<int> indices, int textureIndex, float w0, float w1, float w2, float w3, bool flipAO, Color32 tintColor) {
 			int index = tempChunkVertices.Count;
 			Vector3 vertPos;
 			for (int v = 0; v < 4; v++) {
@@ -1036,8 +1049,7 @@ namespace VoxelPlay
 			}
 		}
 
-		void AddFaceWater (Vector3[] faceVertices, Vector3[] normals, Vector3 pos, List<int> indices, int textureIndex, int w, int h0, int h1, int h2, int h3, Color32 tintColor)
-		{
+		void AddFaceWater (Vector3[] faceVertices, Vector3[] normals, Vector3 pos, List<int> indices, int textureIndex, int w, int h0, int h1, int h2, int h3, Color32 tintColor) {
 			int index = tempChunkVertices.Count;
 			Vector3 vertPos;
 			// vertices
@@ -1068,15 +1080,15 @@ namespace VoxelPlay
 			indices.Add (index + 3);
 			indices.Add (index + 2);
 			indices.Add (index + 1);
-			Vector4 v4 = new Vector4 (0, 0, textureIndex, w);
-			tempChunkUV0.Add (v4); //new Vector4 (0, 0, textureIndex, w));
+			Vector4 v4 = new Vector4 (0f, 0f, textureIndex, w);
+			tempChunkUV0.Add (v4);
 			v4.y = 1f;
-			tempChunkUV0.Add (v4); //new Vector4 (0, 1, textureIndex, w));
+			tempChunkUV0.Add (v4);
 			v4.x = 1f;
 			v4.y = 0f;
-			tempChunkUV0.Add (v4); //new Vector4 (1, 0, textureIndex, w));
+			tempChunkUV0.Add (v4);
 			v4.y = 1f;
-			tempChunkUV0.Add (v4); //new Vector4 (1, 1, textureIndex, w));
+			tempChunkUV0.Add (v4);
 			if (enableTinting) {
 				tempChunkColors32.Add (tintColor);
 				tempChunkColors32.Add (tintColor);
@@ -1085,8 +1097,7 @@ namespace VoxelPlay
 			}
 		}
 
-		void AddFaceVegetation (Vector3[] faceVertices, Vector3 pos, List<int> indices, int textureIndex, float w, Color32 tintColor)
-		{
+		void AddFaceVegetation (Vector3[] faceVertices, Vector3 pos, List<int> indices, int textureIndex, float w, Color32 tintColor) {
 			int index = tempChunkVertices.Count;
 
 			// Add random displacement and elevation
@@ -1128,8 +1139,7 @@ namespace VoxelPlay
 		}
 
 
-		void AddFaceTransparent (Vector3[] faceVertices, Vector3[] normals, Vector3 pos, List<int> indices, int textureIndex, float light, Color32 tintColor)
-		{
+		void AddFaceTransparent (Vector3[] faceVertices, Vector3[] normals, Vector3 pos, List<int> indices, int textureIndex, float light, Color32 tintColor) {
 			int index = tempChunkVertices.Count;
 			Vector3 vertPos;
 			for (int v = 0; v < 4; v++) {
@@ -1169,8 +1179,7 @@ namespace VoxelPlay
 		/// </summary>
 		/// <param name="chunk">Chunk.</param>
 		/// <param name="voxelIndex">Voxel index.</param>
-		GameObject MakeDynamicCubeFromVoxel (VoxelChunk chunk, int voxelIndex)
-		{
+		GameObject MakeDynamicCubeFromVoxel (VoxelChunk chunk, int voxelIndex) {
 			VoxelDefinition type = voxelDefinitions [chunk.voxels [voxelIndex].typeIndex];
 			Color32 tintColor = chunk.voxels [voxelIndex].color;
 
@@ -1227,8 +1236,7 @@ namespace VoxelPlay
 
 
 
-		void AddFace (Vector3[] faceVertices, Vector3[] normals, int textureIndex, Color32 tintColor)
-		{
+		void AddFace (Vector3[] faceVertices, Vector3[] normals, int textureIndex, Color32 tintColor) {
 			int index = tempVertices.Count;
 			for (int v = 0; v < 4; v++) {
 				tempVertices.Add (faceVertices [v]);

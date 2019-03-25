@@ -24,7 +24,7 @@ GameObject:
   - component: {fileID: 64578001959700952}
   - component: {fileID: 114424724464589760}
   m_Layer: 0
-  m_Name: Door-SImple-Left
+  m_Name: Door-Simple-Left
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

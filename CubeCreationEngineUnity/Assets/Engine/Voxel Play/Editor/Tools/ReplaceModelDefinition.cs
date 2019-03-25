@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEditor;
 using VoxelPlay;
 
-public class ReplaceModelDefinition : EditorWindow {
+public class VoxelPlayReplaceModelDefinitionTool : EditorWindow {
 
 	public ModelDefinition md;
 	public VoxelDefinition vd1, vd2;
@@ -14,7 +14,7 @@ public class ReplaceModelDefinition : EditorWindow {
 
 	[MenuItem ("Assets/Create/Voxel Play/Replace Model Voxels...", false, 1000)]
 	public static void ShowWindow () {
-		ReplaceModelDefinition window = GetWindow<ReplaceModelDefinition> ("Replace Voxels", true);
+		VoxelPlayReplaceModelDefinitionTool window = GetWindow<VoxelPlayReplaceModelDefinitionTool> ("Replace Voxels", true);
 		window.minSize = new Vector2 (400, 140);
 		window.Show ();
 	}
@@ -42,7 +42,7 @@ public class ReplaceModelDefinition : EditorWindow {
 
 
 		EditorGUILayout.BeginHorizontal ();
-		EditorGUILayout.LabelField ("Repalce Color", GUILayout.Width (120));
+		EditorGUILayout.LabelField ("Replace Color", GUILayout.Width (120));
 		replaceColor = EditorGUILayout.Toggle (replaceColor);
 		EditorGUILayout.EndHorizontal ();
 

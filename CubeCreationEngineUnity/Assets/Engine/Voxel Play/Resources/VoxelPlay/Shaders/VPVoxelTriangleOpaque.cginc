@@ -27,6 +27,8 @@ struct vertexInfo {
 v2f vert (appdata v) {
 	v2f o;
 	float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldPos)
+
 	float4 uv = v.uv;
 	#if defined(VP_CUTOUT)
 		int iuvz = (int)uv.z;
@@ -69,7 +71,7 @@ fixed4 frag (v2f i) : SV_Target {
 
 	VOXELPLAY_APPLY_TINTCOLOR(color, i);
 
-	VOXELPLAY_APPLY_OUTLINE(color, i);
+	VOXELPLAY_APPLY_OUTLINE_SIMPLE(color, i);
 
 	VOXELPLAY_APPLY_LIGHTING_AO_AND_GI(color, i);
 

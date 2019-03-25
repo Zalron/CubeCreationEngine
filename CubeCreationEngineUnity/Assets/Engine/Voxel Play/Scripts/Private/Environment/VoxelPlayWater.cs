@@ -68,18 +68,6 @@ namespace VoxelPlay
 
 		}
 
-
-		/// <summary>
-		/// Start flooding at a given position
-		/// </summary>
-		/// <param name="position">Position.</param>
-		void AddWaterFlood (ref Vector3 position, VoxelDefinition waterVoxel, int lifeTime = 24)
-		{
-			if (enableWaterFlood && lifeTime > 0 && waterVoxel != null) {
-				waterFloodSources.Add (ref position, waterVoxel, lifeTime);
-			}
-		}
-
 		/// <summary>
 		/// Manages flooding
 		/// </summary>

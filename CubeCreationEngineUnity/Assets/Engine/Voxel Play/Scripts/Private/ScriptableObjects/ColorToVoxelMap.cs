@@ -11,7 +11,7 @@ namespace VoxelPlay {
 		public VoxelDefinition voxelDefinition;
 	}
 
-	[CreateAssetMenu (menuName = "Voxel Play/Color To Voxel Map", fileName = "ColorToVoxelMap", order = 1001)]
+	[CreateAssetMenu (menuName = "Voxel Play/Color To Voxel Map Asset", fileName = "ColorToVoxelMap", order = 152)]
 	public partial class ColorToVoxelMap : ScriptableObject {
 		[Tooltip ("Default voxel definition used for any color that does not have an associated voxel definition.")]
 		public VoxelDefinition defaultVoxelDefinition;

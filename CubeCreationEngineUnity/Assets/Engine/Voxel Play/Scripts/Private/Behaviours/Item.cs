@@ -13,14 +13,22 @@ namespace VoxelPlay {
 		/// <summary>
 		/// The item type represented by this object.
 		/// </summary>
-		[NonSerialized]
-		public ItemDefinition type;
+		public ItemDefinition itemDefinition;
+
+		public float quantity = 1f;
+
+		public bool autoRotate = true;
 
 		/// <summary>
-		/// Resitance points left for this item. Used for items that can be damaged on the scene (not voxels).
+		/// If set to true, this item will be added to the chunk items list. If item moves (ie. falls down), it will switch chunk automatically
+		/// </summary>
+		public bool persistentItem;
+
+		/// <summary>
+		/// Resistance points left for this item. Used for items that can be damaged on the scene (not voxels).
 		/// </summary>
 		[NonSerialized]
-		public byte resitancePointsLeft;
+		public byte resistancePointsLeft;
 
 		/// <summary>
 		/// If this object represents an item that can be picked up by a player
@@ -30,9 +38,6 @@ namespace VoxelPlay {
 
 		[NonSerialized]
 		public float creationTime;
-
-		[NonSerialized]
-		public float quantity = 1f;
 
 		const float PICK_UP_START_DISTANCE_SQR = 6.5f;
 		const float PICK_UP_END_DISTANCE_SQR = 0.81f;
@@ -44,11 +49,42 @@ namespace VoxelPlay {
 		[NonSerialized]
 		public bool pickingUp;
 
-		void Update() {
-			if (!canPickUp || type == null || rb == null)
+		VoxelPlayEnvironment env;
+		VoxelChunk lastChunk;
+		Material mat;
+		Vector3 lastPosition;
+
+
+		void Start () {
+			if (rb == null) {
+				rb = GetComponent<Rigidbody> ();
+			}
+			if (persistentItem) {
+				env = VoxelPlayEnvironment.instance;
+				// Clone material to support voxel lighting
+				Renderer renderer = GetComponent<Renderer> ();
+				if (renderer != null) {
+					mat = renderer.sharedMaterial;
+					if (mat != null) {
+						mat = Instantiate<Material> (mat);
+						renderer.sharedMaterial = mat;
+					}
+				}
+				ManageItem ();
+			}
+		}
+
+		void Update () {
+			if (!canPickUp || itemDefinition == null || rb == null)
 				return;
 
-			rb.rotation = Quaternion.Euler(Misc.vector3up * ((Time.time * ROTATION_SPEED) % 360));
+			if (autoRotate) {
+				rb.rotation = Quaternion.Euler (Misc.vector3up * ((Time.time * ROTATION_SPEED) % 360));
+			}
+
+			if (persistentItem) {
+				ManageItem ();
+			}
 
 			if (!pickingUp) {
 				if (Time.frameCount % 10 != 0)
@@ -73,23 +109,72 @@ namespace VoxelPlay {
 			if (Time.time - creationTime > 1f) { 
 				float dist = dx * dx + dy * dy + dz * dz;
 				if (dist < PICK_UP_END_DISTANCE_SQR) {
-					VoxelPlayPlayer.instance.AddInventoryItem (type, quantity);
+					VoxelPlayPlayer.instance.AddInventoryItem (itemDefinition, quantity);
 					VoxelPlayUI.instance.RefreshInventoryContents ();
-					PlayPickupSound (type.pickupSound);
-					gameObject.SetActive (false);
+					PlayPickupSound (itemDefinition.pickupSound);
+					if (persistentItem) {
+						Destroy (gameObject);
+					} else {
+						gameObject.SetActive (false);
+					}
 				} else if (dist < PICK_UP_START_DISTANCE_SQR) {
 					pickingUp = true;
 				}
 			}
 		}
 
-		void PlayPickupSound(AudioClip sound) {
+		void PlayPickupSound (AudioClip sound) {
+			AudioSource audioSource = VoxelPlayPlayer.instance.audioSource;
+			if (audioSource == null)
+				return;
 			if (sound != null) {
-				VoxelPlayPlayer.instance.audioSource.PlayOneShot(sound);
+				audioSource.PlayOneShot (sound);
 			} else if (VoxelPlayEnvironment.instance.defaultPickupSound != null) {
-				VoxelPlayPlayer.instance.audioSource.PlayOneShot(VoxelPlayEnvironment.instance.defaultPickupSound);
+				audioSource.PlayOneShot (VoxelPlayEnvironment.instance.defaultPickupSound);
 			}
 		}
+
+		void ManageItem () {
+			if (env == null )
+				return;
+			
+			Vector3 currentPosition = transform.position;
+
+			if (lastChunk != null && lastChunk.isRendered) {
+				if (currentPosition == lastPosition) {
+					return;
+				}
+				lastPosition = currentPosition;
+			}
+
+			// Update lighting
+			if (mat != null) {
+				mat.SetFloat ("_VoxelLight", env.GetVoxelLight (currentPosition));
+			}
+
+			// Update owner chunk
+			VoxelChunk currentChunk;
+			if (!env.GetChunk (currentPosition, out currentChunk, true))
+				return;
+			if (currentChunk != lastChunk) {
+				if (lastChunk != null) {
+					lastChunk.RemoveItem (this);
+				}
+				currentChunk.AddItem (this);
+				lastChunk = currentChunk;
+			}
+
+			if (currentChunk.isRendered && rb != null && !rb.useGravity) {
+				rb.useGravity = true;
+			}
+		}
+
+		void OnDestroy() {
+			if (lastChunk != null) {
+				lastChunk.RemoveItem (this);
+			}
+		}
+
 
 	}
 

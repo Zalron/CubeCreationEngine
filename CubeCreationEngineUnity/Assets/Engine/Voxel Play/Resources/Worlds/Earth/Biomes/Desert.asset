@@ -34,4 +34,15 @@ MonoBehaviour:
     elevationMax: 0.75
     moistureMin: 0.15
     moistureMax: 0.35
-  ores: []
+  ores:
+  - ore: {fileID: 11400000, guid: 0a7701ce598c04d908cab9a8ebf0e708, type: 2}
+    probabilityMin: 0
+    probabilityMax: 0.15
+    depthMin: 0
+    depthMax: 0
+    veinMinSize: 2
+    veinMaxSize: 6
+    veinsCountMin: 1
+    veinsCountMax: 2
+  biomeMapColor: {r: 0, g: 0, b: 1, a: 1}
+  showInBiomeMap: 1

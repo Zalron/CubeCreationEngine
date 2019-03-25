@@ -32,6 +32,8 @@ namespace VoxelPlay {
 
 			EditorGUIUtility.labelWidth = 120;
 
+//			EditorGUI.BeginChangeCheck ();
+
 			SerializedProperty enabled = property.FindPropertyRelative("enabled");
 			Rect prevPosition = position;
 			position.x -= 14;
@@ -244,7 +246,7 @@ namespace VoxelPlay {
 					}
 				}
 
-				if (markSceneChanges) {
+				if (markSceneChanges && !Application.isPlaying) {
 					UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
 				}
 

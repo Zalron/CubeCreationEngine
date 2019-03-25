@@ -16,12 +16,13 @@ namespace VoxelPlay.GPUInstancing {
 		public float[] light;
 		public int instancesCount;
 		public MaterialPropertyBlock materialPropertyBlock;
+		public Vector3 boundsMin, boundsMax;
 
-		public Batch() {
+		public Batch () {
 			Init ();
 		}
 
-		public void Init() {
+		public void Init () {
 			instancesCount = 0;
 			if (matrices == null) {
 				matrices = new Matrix4x4[MAX_INSTANCES];
@@ -30,6 +31,29 @@ namespace VoxelPlay.GPUInstancing {
 				materialPropertyBlock = new MaterialPropertyBlock ();
 			}
 			materialPropertyBlock.Clear ();
+			boundsMin = Misc.vector3max;
+			boundsMax = Misc.vector3min;
+		}
+
+		public void UpdateBounds (Vector3 position, Vector3 size) {
+			if (position.x - size.x < boundsMin.x) {
+				boundsMin.x = position.x - size.x;
+			}
+			if (position.y - size.y < boundsMin.y) {
+				boundsMin.y = position.y - size.y;
+			}
+			if (position.z - size.z < boundsMin.z) {
+				boundsMin.z = position.z - size.z;
+			}
+			if (position.x + size.x > boundsMax.x) {
+				boundsMax.x = position.x + size.x;
+			}
+			if (position.y + size.y > boundsMax.y) {
+				boundsMax.y = position.y + size.y;
+			}
+			if (position.z + size.z > boundsMax.z) {
+				boundsMax.z = position.z + size.z;
+			}
 		}
 	}
 

@@ -237,20 +237,20 @@ namespace VoxelPlay
 								// compute water neighbours and account for foam
 								// back
 								occ = chunk_middle_back_middle [middle_back_middle].hasContent;
-								if (occ != 0) {
+								if (occ == 1) {
 									// occlusionX bit = 0 means that face is visible
 									occlusionX |= 1;
 									if (hb == 0) {
-										occlusionY += 1;
+										occlusionY |= 1;
 									}
 								}
 											
 								// front
 								occ = chunk_middle_forward_middle [middle_forward_middle].hasContent;
-								if (occ != 0) {
+								if (occ == 1) {
 									occlusionX |= (1 << 1);
 									if (hf == 0) {
-										occlusionY += 2;
+										occlusionY |= 2;
 									}
 								}
 
@@ -267,39 +267,47 @@ namespace VoxelPlay
 
 								// left
 								occ = chunk_middle_middle_left [middle_middle_left].hasContent;
-								if (occ != 0) {
+								if (occ == 1) {
 									occlusionX |= (1 << 4);
 									if (hl == 0) {
-										occlusionY += 4;
+										occlusionY |= 4;
 									}
 								}
 								// right
 								occ = chunk_middle_middle_right [middle_middle_right].hasContent;
-								if (occ != 0) {
+								if (occ == 1) {
 									occlusionX += (1 << 5);
 									if (hr == 0) {
-										occlusionY += 8;
+										occlusionY |= 8;
 									}
 								}
 
-								// if there's something on top, no foam
-//								if (chunk_top_middle_middle [top_middle_middle].hasContent == 1 && wh < 15) {
-//									if (chunk_top_back_middle [top_back_middle].hasContent != 1 || chunk_top_forward_middle [top_forward_middle].hasContent != 1 ||
-//									    chunk_top_middle_left [top_middle_left].hasContent != 1 || chunk_top_middle_right [top_middle_right].hasContent != 1) {
-//										occlusionY = 0;
-//									}
-//								}
-
-								// Get corners heights
 								// If there's water on top, full size
 								if (th > 0) {
 									occlusionW = 15 + (15 << 4) + (15 << 8) + (15 << 12); // full height
-									occlusionY += (1 << 4) + (1 << 6);	// neutral/no flow
+									occlusionY += (1 << 8) + (1 << 10);	// neutral/no flow
 								} else {
+									// Get corners heights
 									int hfr = chunk_middle_forward_right [middle_forward_right].GetWaterLevel ();
 									int hbr = chunk_middle_back_right [middle_back_right].GetWaterLevel ();
 									int hbl = chunk_middle_back_left [middle_back_left].GetWaterLevel ();
 									int hfl = chunk_middle_forward_left [middle_forward_left].GetWaterLevel ();
+
+									// corner foam
+									if (type.showFoam) {
+										if (hbl == 0) {
+											occlusionY |= chunk_middle_back_left [middle_back_left].hasContent << 4;
+										}
+										if (hfl == 0) {
+											occlusionY |= chunk_middle_forward_left [middle_forward_left].hasContent << 5;
+										}
+										if (hfr == 0) {
+											occlusionY |= chunk_middle_forward_right [middle_forward_right].hasContent << 6;
+										}
+										if (hbr == 0) {
+											occlusionY |= chunk_middle_back_right [middle_back_right].hasContent << 7;
+										}
+									}
 
 									int tf = chunk_top_forward_middle [top_forward_middle].GetWaterLevel ();
 									int tfr = chunk_top_forward_right [top_forward_right].GetWaterLevel ();
@@ -368,7 +376,11 @@ namespace VoxelPlay
 									else
 										fz = 1;
 
-									occlusionY += (fx << 4) + (fz << 6);
+									occlusionY += (fx << 8) + (fz << 10);
+								}
+
+								if (!type.showFoam) {
+									occlusionY &= 0xFF00;
 								}
 								pos.y -= 0.5f;
 								tempChunkVertices.Add (pos);
@@ -613,7 +625,6 @@ namespace VoxelPlay
 								// Add color variation
 								float random = WorldRand.GetValue (pos);
 								int r = (int)(255f * (1f + (random - 0.45f) * type.colorVariation));
-//								int r = (int)((0.8f + random * 0.4f) * 255);  // adds color variation
 								uvAux.w += (r << 6);
 								if (type.windAnimation) {
 									uvAux.w += 65536; //1 << 16;
@@ -740,12 +751,12 @@ namespace VoxelPlay
 								occlusionW += occ << 20;
 
 							} else {
-								occlusionX = lb; //chunk_middle_back_middle [middle_back_middle].light;  // back
-								occlusionX += lf << 4; //chunk_middle_forward_middle [middle_forward_middle].light << 4;  // forward
-								occlusionX += lu << 8; // chunk_top_middle_middle [top_middle_middle].light << 8;  // top
-								occlusionX += ll << 12; // chunk_middle_middle_left [middle_middle_left].light << 12;  // left
-								occlusionX += lr << 16; // chunk_middle_middle_right [middle_middle_right].light << 16;  // right
-								occlusionX += ld << 20; // chunk_bottom_middle_middle [bottom_middle_middle].light << 20;  // bottom
+								occlusionX = lb; // back
+								occlusionX += lf << 4; // forward
+								occlusionX += lu << 8; // top
+								occlusionX += ll << 12; // // left
+								occlusionX += lr << 16; // right
+								occlusionX += ld << 20; // bottom
 							}
 							break;
 						}

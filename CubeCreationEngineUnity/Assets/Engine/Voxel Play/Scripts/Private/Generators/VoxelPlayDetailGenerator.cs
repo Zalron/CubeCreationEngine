@@ -5,6 +5,7 @@ using UnityEngine;
 
 namespace VoxelPlay {
 
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000027332-detail-generators")]
 	public abstract class VoxelPlayDetailGenerator : ScriptableObject {
 
 		public bool enabled = true;

@@ -24,7 +24,7 @@ GameObject:
   - component: {fileID: 23850616920212366}
   - component: {fileID: 54860866519528984}
   - component: {fileID: 114546651366739600}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: DamageParticle
   m_TagString: Untagged
   m_Icon: {fileID: 0}

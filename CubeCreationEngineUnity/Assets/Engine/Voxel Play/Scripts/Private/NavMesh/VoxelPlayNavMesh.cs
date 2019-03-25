@@ -22,7 +22,7 @@ namespace VoxelPlay {
 			navMeshBuildSettings = NavMesh.GetSettingsByIndex (0);
 			navMeshBuildSettings.agentClimb = 1f;
 			navMeshBuildSettings.agentSlope = 60;
-			navMeshSources = new List<NavMeshBuildSource> (2048);
+			navMeshSources = GetList<NavMeshBuildSource> (2048);
 			navMeshData = new NavMeshData ();
 			navMeshInstance = NavMesh.AddNavMeshData (navMeshData);
 			worldBounds = new Bounds ();

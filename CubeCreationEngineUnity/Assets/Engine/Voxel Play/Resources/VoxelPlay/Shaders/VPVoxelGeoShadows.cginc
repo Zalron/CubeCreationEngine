@@ -22,6 +22,7 @@ void vert (inout appdata v) {
 inline void PushCorner(inout TriangleStream<g2f>o, float3 center, float3 corner) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX_NO_WPOS(v.vertex)
 	g2f i;
 	TRANSFER_SHADOW_CASTER(i);
 	o.Append(i);

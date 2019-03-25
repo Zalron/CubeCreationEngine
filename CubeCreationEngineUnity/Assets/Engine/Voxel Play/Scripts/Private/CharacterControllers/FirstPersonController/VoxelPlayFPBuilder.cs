@@ -1,21 +1,26 @@
-#if UNITY_EDITOR
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using System.Collections.Generic;
 
 namespace VoxelPlay {
 
 	public partial class VoxelPlayFirstPersonController :  VoxelPlayCharacterControllerBase {
 
-		[Header("Builder"), Tooltip("Assign a VoxelPlay Model definition asset to edit it")]
+		GameObject voxelHighlightBuilder = null;
+
+		#if UNITY_EDITOR
+
+		[Header ("Builder"), Tooltip ("Assign a VoxelPlay Model definition asset to edit it")]
 		public ModelDefinition loadModel;
 
-		[Tooltip("Default constructor size")]
+		[Tooltip ("Default constructor size")]
 		public int constructorSize = 16;
 
-		GameObject grid, voxelHighlightBuilder;
+		GameObject grid;
 		const string GRID_NAME = "Voxel Play Builder Grid";
 		static Vector3 buildingPosition = Misc.vector3one * 1608f;
 		Vector3 beforeConstructorPosition;
@@ -24,40 +29,40 @@ namespace VoxelPlay {
 		ModelDefinition prevModel;
 		int sizeX, sizeY, sizeZ;
 
-		void ToggleConstructor() {
+		void ToggleConstructor () {
 			env.constructorMode = !env.constructorMode;
 			if (constructorCanvas == null) {
-				constructorCanvas = Instantiate<GameObject>(Resources.Load<GameObject>("VoxelPlay/UI/CanvasConstructor"));
-				constructorCanvas.transform.SetParent(env.worldRoot, false);
+				constructorCanvas = Instantiate<GameObject> (Resources.Load<GameObject> ("VoxelPlay/UI/CanvasConstructor"));
+				constructorCanvas.transform.SetParent (env.worldRoot, false);
 			}
 			if (env.constructorMode) {
-				env.ShowMessage("<color=green>Entered </color><color=yellow>The Constructor</color><color=green>. Press <color=white>V</color> again to exit.</color>");
-				constructorCanvas.SetActive(true);
+				env.ShowMessage ("<color=green>Entered </color><color=yellow>The Constructor</color><color=green>. Press <color=white>V</color> again to exit.</color>");
+				constructorCanvas.SetActive (true);
 			} else {
-				env.ShowMessage("<color=green>Back to normal world. Press <color=white>B</color> to cancel <color=yellow>Build Mode</color>.</color>");
-				constructorCanvas.SetActive(false);
+				env.ShowMessage ("<color=green>Back to normal world. Press <color=white>B</color> to cancel <color=yellow>Build Mode</color>.</color>");
+				constructorCanvas.SetActive (false);
 			}
-			UpdateConstructorMode();
+			UpdateConstructorMode ();
 		}
 
-		void RefreshConstructorCanvas() {
+		void RefreshConstructorCanvas () {
 			string modelName = loadModel == null ? "<New Model>" : loadModel.name;
-			constructorCanvas.transform.Find("Panel/ModelName").GetComponent<Text>().text = modelName;
+			constructorCanvas.transform.Find ("Panel/ModelName").GetComponent<Text> ().text = modelName;
 		}
 
-		void UpdateConstructorMode() {
+		void UpdateConstructorMode () {
 			if (env.constructorMode) {
-				GetModelSize();
+				GetModelSize ();
 				if (grid == null) {
-					grid = Instantiate<GameObject>(Resources.Load<GameObject>("VoxelPlay/Prefabs/Grid"));
+					grid = Instantiate<GameObject> (Resources.Load<GameObject> ("VoxelPlay/Prefabs/Grid"));
 					grid.name = GRID_NAME;
 				} else {
-					grid.SetActive(true);
+					grid.SetActive (true);
 				}
-				grid.transform.localScale = new Vector3(sizeX, sizeY, sizeZ);
-				grid.transform.position = buildingPosition + new Vector3(0, sizeY / 2, 0);
+				grid.transform.localScale = new Vector3 (sizeX, sizeY, sizeZ);
+				grid.transform.position = buildingPosition + new Vector3 (0, sizeY / 2, 0);
 				grid.GetComponent<Renderer> ().sharedMaterial.SetFloat ("_Size", constructorSize);
-				ClearConstructionArea();
+				ClearConstructionArea ();
 				beforeOrbitMode = orbitMode;
 				beforeFreeMode = freeMode;
 				beforeConstructorPosition = transform.position;
@@ -65,37 +70,37 @@ namespace VoxelPlay {
 				env.enableColliders = false;
 				orbitMode = false;
 				freeMode = false;
-				transform.position = grid.transform.position;
+				MoveTo (grid.transform.position);
 				isFlying = true;
-				limitBounds = new Bounds(grid.transform.position, new Vector3(sizeX - 1, sizeY - 1, sizeZ - 1));
+				limitBounds = new Bounds (grid.transform.position, new Vector3 (sizeX - 1, sizeY - 1, sizeZ - 1));
 				limitBoundsEnabled = true;
-				UpdateVoxelHighlight();
-				voxelHighlightBuilder.SetActive(true);
-				RefreshConstructorCanvas();
+				UpdateVoxelHighlight ();
+				voxelHighlightBuilder.SetActive (true);
+				RefreshConstructorCanvas ();
 				Selection.activeGameObject = gameObject;
 			} else {
 				if (grid != null) {
-					grid.SetActive(false);
+					grid.SetActive (false);
 				}
 				if (voxelHighlightBuilder != null) {
-					voxelHighlightBuilder.SetActive(false);
+					voxelHighlightBuilder.SetActive (false);
 				}
 				isFlying = false;
 				limitBoundsEnabled = false;
-				transform.position = beforeConstructorPosition;
+				MoveTo (beforeConstructorPosition);
 				orbitMode = beforeOrbitMode;
 				freeMode = beforeFreeMode;
 				env.enableColliders = beforeEnableColliders;
 			}
 		}
 
-		void UpdateConstructor() {
+		void UpdateConstructor () {
 												
 			if (!env.buildMode)
 				return;
 
-			if (Input.GetKeyDown(KeyCode.V)) {
-				ToggleConstructor();
+			if (Input.GetKeyDown (KeyCode.V)) {
+				ToggleConstructor ();
 			}
 
 			if (!env.constructorMode)
@@ -103,36 +108,36 @@ namespace VoxelPlay {
 
 			if (loadModel != null && prevModel != loadModel) {
 				prevModel = loadModel;
-				LoadModel();
+				LoadModel ();
 			}
 
-			UpdateVoxelHighlight();
+			UpdateVoxelHighlight ();
 
-			if (Input.GetKeyDown(KeyCode.F5)) {
-				LoadModel();
-			} else if (Input.GetKeyDown(KeyCode.F6)) {
-				SaveModel();
-			} else if (Input.GetKey(KeyCode.LeftControl)) {
-				if (Input.GetKeyDown(KeyCode.A)) {
-					DisplaceModel(-1, 0, 0);
-				} else if (Input.GetKeyDown(KeyCode.D)) {
-					DisplaceModel(1, 0, 0);
-				} else if (Input.GetKeyDown(KeyCode.S)) {
-					DisplaceModel(0, 0, -1);
-				} else if (Input.GetKeyDown(KeyCode.W)) {
-					DisplaceModel(0, 0, 1);
-				} else if (Input.GetKeyDown(KeyCode.Q)) {
-					DisplaceModel(0, -1, 0);
-				} else if (Input.GetKeyDown(KeyCode.E)) {
-					DisplaceModel(0, 1, 0);
+			if (Input.GetKeyDown (KeyCode.F5)) {
+				LoadModel ();
+			} else if (Input.GetKeyDown (KeyCode.F6)) {
+				SaveModel ();
+			} else if (Input.GetKey (KeyCode.LeftControl)) {
+				if (Input.GetKeyDown (KeyCode.A)) {
+					DisplaceModel (-1, 0, 0);
+				} else if (Input.GetKeyDown (KeyCode.D)) {
+					DisplaceModel (1, 0, 0);
+				} else if (Input.GetKeyDown (KeyCode.S)) {
+					DisplaceModel (0, 0, -1);
+				} else if (Input.GetKeyDown (KeyCode.W)) {
+					DisplaceModel (0, 0, 1);
+				} else if (Input.GetKeyDown (KeyCode.Q)) {
+					DisplaceModel (0, -1, 0);
+				} else if (Input.GetKeyDown (KeyCode.E)) {
+					DisplaceModel (0, 1, 0);
 				}
 			}
 
 		}
 
-		void UpdateVoxelHighlight() {
+		void UpdateVoxelHighlight () {
 			if (voxelHighlightBuilder == null) {
-				voxelHighlightBuilder = Instantiate<GameObject>(Resources.Load<GameObject>("VoxelPlay/Prefabs/VoxelHighlight"));
+				voxelHighlightBuilder = Instantiate<GameObject> (Resources.Load<GameObject> ("VoxelPlay/Prefabs/VoxelHighlight"));
 			}
 
 			Vector3 rawPos;
@@ -144,22 +149,22 @@ namespace VoxelPlay {
 
 			// Bound check
 			for (int i = 0; i < 50; i++) {
-				if (limitBounds.Contains(rawPos))
+				if (limitBounds.Contains (rawPos))
 					break;
 				rawPos -= m_Camera.transform.forward * 0.1f;
 			}
 																
-			rawPos.x = FastMath.FloorToInt(rawPos.x) + 0.5f;
+			rawPos.x = FastMath.FloorToInt (rawPos.x) + 0.5f;
 			if (rawPos.x > limitBounds.max.x)
 				rawPos.x = limitBounds.max.x - 0.5f;
 			if (rawPos.x < limitBounds.min.x)
 				rawPos.x = limitBounds.min.x + 0.5f;
-			rawPos.y = FastMath.FloorToInt(rawPos.y) + 0.5f;
+			rawPos.y = FastMath.FloorToInt (rawPos.y) + 0.5f;
 			if (rawPos.y > limitBounds.max.y)
 				rawPos.y = limitBounds.max.y - 0.5f;
 			if (rawPos.y < limitBounds.min.y)
 				rawPos.y = limitBounds.min.y + 0.5f;
-			rawPos.z = FastMath.FloorToInt(rawPos.z) + 0.5f;
+			rawPos.z = FastMath.FloorToInt (rawPos.z) + 0.5f;
 			if (rawPos.z > limitBounds.max.z)
 				rawPos.z = limitBounds.max.z - 0.5f;
 			if (rawPos.z < limitBounds.min.z)
@@ -167,87 +172,89 @@ namespace VoxelPlay {
 			voxelHighlightBuilder.transform.position = rawPos;
 		}
 
-		void LoadModel() {
+		void LoadModel () {
 			if (loadModel == null) {
-				DisplayDialog("Load Model", "Please assign an existing Model Definition file to the loadModel property of Voxel Play FPS Controller in the inspector.", "Ok");
+				DisplayDialog ("Load Model", "Please assign an existing Model Definition file to the loadModel property of Voxel Play FPS Controller in the inspector.", "Ok");
 				return;
 			}
 
-			if (!DisplayDialog("Load Model?", "Discard any change and load model?", "Yes", "No")) return;
+			if (!DisplayDialog ("Load Model?", "Discard any change and load model?", "Yes", "No"))
+				return;
 
-			GetModelSize();
+			GetModelSize ();
 
 			// Clear building location
-			ClearConstructionArea();
+			ClearConstructionArea ();
 
 			// Loads model content
 			Vector3 basePosition = buildingPosition;
 			for (int k = 0; k < loadModel.bits.Length; k++) {
-				Vector3 pos = basePosition - new Vector3(loadModel.offsetX, loadModel.offsetY, loadModel.offsetZ); // ignore offset
-				env.ModelPlace(pos, loadModel, 0, 1f, false);
+				Vector3 pos = basePosition - new Vector3 (loadModel.offsetX, loadModel.offsetY, loadModel.offsetZ); // ignore offset
+				env.ModelPlace (pos, loadModel, 0, 1f, false);
 			}
 		}
 
-		void ClearConstructionArea() {
+		void ClearConstructionArea () {
 			for (int y = 0; y < sizeY; y++) {
 				for (int z = 0; z < sizeZ; z++) {
 					for (int x = 0; x < sizeX; x++) {
-						env.VoxelDestroy(buildingPosition + new Vector3(x - sizeX / 2, y, z - sizeZ / 2));
+						env.VoxelDestroy (buildingPosition + new Vector3 (x - sizeX / 2, y, z - sizeZ / 2));
 					}
 				}
 			}
 		}
 
-		void SaveModel() {
+		void SaveModel () {
 
-			string assetPathAndName = AssetDatabase.GetAssetPath(loadModel);
+			string assetPathAndName = AssetDatabase.GetAssetPath (loadModel);
 			string modeFilename = assetPathAndName == "" ? "Assets/NewModelDefinition.asset" : assetPathAndName;
 				
-			if (!DisplayDialog("Save Model?", "Save current model to file " + modeFilename + "? (Existing file will be replaced)", "Yes", "No")) return;
+			if (!DisplayDialog ("Save Model?", "Save current model to file " + modeFilename + "? (Existing file will be replaced)", "Yes", "No"))
+				return;
 
 			bool isNew = false;
 			if (loadModel == null) {
-				loadModel = ScriptableObject.CreateInstance<ModelDefinition>();
+				loadModel = ScriptableObject.CreateInstance<ModelDefinition> ();
 				isNew = true;
 			}
-			List<ModelBit> bits = new List<ModelBit>();
+			List<ModelBit> bits = new List<ModelBit> ();
 			for (int y = 0; y < sizeY; y++) {
 				for (int z = 1; z < sizeZ; z++) {
 					for (int x = 0; x < sizeX; x++) {
-						Voxel voxel = env.GetVoxel(buildingPosition + new Vector3(x - sizeX / 2, y, z - sizeZ / 2));
+						Voxel voxel = env.GetVoxel (buildingPosition + new Vector3 (x - sizeX / 2, y, z - sizeZ / 2));
 						if (voxel.hasContent == 1) {
 							int k = y * sizeZ * sizeX + z * sizeX + x;
-							ModelBit bit = new ModelBit();
+							ModelBit bit = new ModelBit ();
 							bit.voxelIndex = k;
 							bit.voxelDefinition = voxel.type;
 							bit.color = voxel.color;
-							bits.Add(bit);
+							bits.Add (bit);
 						}
 					}
 				}
 			}
-			loadModel.bits = bits.ToArray();
+			loadModel.bits = bits.ToArray ();
 
 			if (assetPathAndName == "") {
-				assetPathAndName = AssetDatabase.GenerateUniqueAssetPath("Assets/NewModelDefinition.asset");
-				AssetDatabase.CreateAsset(loadModel, assetPathAndName);
+				assetPathAndName = AssetDatabase.GenerateUniqueAssetPath ("Assets/NewModelDefinition.asset");
+				AssetDatabase.CreateAsset (loadModel, assetPathAndName);
 			}
-			EditorUtility.SetDirty(loadModel);
-			AssetDatabase.SaveAssets();
-			AssetDatabase.Refresh();
+			EditorUtility.SetDirty (loadModel);
+			AssetDatabase.SaveAssets ();
+			AssetDatabase.Refresh ();
 
-			env.ReloadTextures();
+			env.ReloadTextures ();
 
-			RefreshConstructorCanvas();
+			RefreshConstructorCanvas ();
 
 			if (isNew) {
-				EditorUtility.FocusProjectWindow();
+				EditorUtility.FocusProjectWindow ();
 				Selection.activeObject = loadModel;
-				DisplayDialog("Save Model", "New model file created successfully in " + assetPathAndName + ".", "Ok");
+				DisplayDialog ("Save Model", "New model file created successfully in " + assetPathAndName + ".", "Ok");
 			}
 		}
 
-		void GetModelSize() {
+		void GetModelSize () {
 			if (loadModel == null) {
 				sizeX = sizeY = sizeZ = constructorSize;
 			} else {
@@ -257,36 +264,42 @@ namespace VoxelPlay {
 			}
 		}
 
-		void DisplaceModel(int dx, int dy, int dz) {
+		void DisplaceModel (int dx, int dy, int dz) {
 			VoxelChunk chunk;
-			if (!env.GetChunk(buildingPosition, out chunk, false)) {
-				Debug.Log("Unexpected error: chunk not found.");
+			if (!env.GetChunk (buildingPosition, out chunk, false)) {
+				Debug.Log ("Unexpected error: chunk not found.");
 				return;
 			}
 			Voxel[] newContents = new Voxel[sizeY * sizeZ * sizeX];
 			int ny, nz, nx;
 			for (int y = 0; y < sizeY; y++) {
 				ny = y + dy;
-				if (ny >= sizeY) ny -= sizeY;
-				else if (ny < 0) ny += sizeY;
+				if (ny >= sizeY)
+					ny -= sizeY;
+				else if (ny < 0)
+					ny += sizeY;
 				for (int z = 0; z < sizeZ; z++) {
 					nz = z + dz;
-					if (nz >= sizeZ) nz -= sizeZ;
-					else if (nz < 0) nz += sizeZ;
+					if (nz >= sizeZ)
+						nz -= sizeZ;
+					else if (nz < 0)
+						nz += sizeZ;
 					for (int x = 0; x < sizeX; x++) {
-						Voxel voxel = env.GetVoxel(buildingPosition + new Vector3(x - sizeX / 2, y, z - sizeZ / 2));
+						Voxel voxel = env.GetVoxel (buildingPosition + new Vector3 (x - sizeX / 2, y, z - sizeZ / 2));
 						if (voxel.hasContent == 1) {
 							nx = x + dx;
-							if (nx >= sizeX) nx -= sizeX;
-							else if (nx < 0) nx += sizeX;
-							newContents[ny * sizeY * sizeZ + nz * sizeX + nx] = voxel;
+							if (nx >= sizeX)
+								nx -= sizeX;
+							else if (nx < 0)
+								nx += sizeX;
+							newContents [ny * sizeY * sizeZ + nz * sizeX + nx] = voxel;
 						}
 					}
 				}
 			}
 
 			// Replace voxels
-			ClearConstructionArea();
+			ClearConstructionArea ();
 			for (int y = 0; y < sizeY; y++) {
 				for (int z = 0; z < sizeZ; z++) {
 					for (int x = 0; x < sizeX; x++) {
@@ -299,13 +312,14 @@ namespace VoxelPlay {
 			}
 		}
 
-		bool DisplayDialog(string title, string message, string ok, string cancel = null) {
-			mouseLook.SetCursorLock(false);
-			bool res = EditorUtility.DisplayDialog(title, message, ok, cancel);
-			mouseLook.SetCursorLock(true);
+		bool DisplayDialog (string title, string message, string ok, string cancel = null) {
+			mouseLook.SetCursorLock (false);
+			bool res = EditorUtility.DisplayDialog (title, message, ok, cancel);
+			mouseLook.SetCursorLock (true);
 			return res;
 		}
 
+		#endif
+
 	}
 }
-#endif

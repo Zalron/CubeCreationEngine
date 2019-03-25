@@ -30,6 +30,7 @@
 			#pragma multi_compile _ VOXELPLAY_USE_AA VOXELPLAY_USE_PARALLAX
 			#pragma multi_compile _ VOXELPLAY_PIXEL_LIGHTS
 			#define USE_SHADOWS
+			#define USE_SPECULAR
 			#include "VPVoxelTriangleWater.cginc"
 			ENDCG
 		}

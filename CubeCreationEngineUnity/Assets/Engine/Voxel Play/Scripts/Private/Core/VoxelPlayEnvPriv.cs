@@ -14,14 +14,17 @@ namespace VoxelPlay {
 
 	public delegate void VoxelHitEvent (VoxelChunk chunk, int voxelIndex, ref int damage);
 	public delegate void VoxelEvent (VoxelChunk chunk, int voxelIndex);
+	public delegate void VoxelPlaceEvent (Vector3 position, VoxelChunk chunk, int voxelIndex, ref VoxelDefinition voxelDefinition, ref Color32 tintColor);
 	public delegate void VoxelDropItemEvent (VoxelChunk chunk, int voxelIndex, out bool canBeCollected);
 	public delegate void VoxelClickEvent (VoxelChunk chunk, int voxelIndex, int buttonIndex);
 	public delegate void VoxelChunkBeforeCreationEvent (Vector3 chunkCenter, out bool overrideDefaultContents, Voxel[] voxels, out bool isAboveSurface);
 	public delegate void VoxelChunkEvent (VoxelChunk chunk);
+	public delegate void VoxelChunkUnloadEvent (VoxelChunk chunk, ref bool canUnload);
 	public delegate void VoxelTorchEvent (VoxelChunk chunk, LightSource lightSource);
 	public delegate void VoxelPlayEvent ();
 	public delegate void VoxelLightRefreshEvent ();
 	public delegate void RepaintActionEvent ();
+	public delegate void VoxelPlayModelBuildEvent (ModelDefinition model, Vector3 position);
 
 	[ExecuteInEditMode]
 	public partial class VoxelPlayEnvironment : MonoBehaviour {
@@ -47,6 +50,7 @@ namespace VoxelPlay {
 		const string SKW_VOXELPLAY_AA_TEXELS = "VOXELPLAY_USE_AA";
 		const string SKW_VOXELPLAY_USE_NORMAL = "VOXELPLAY_USE_NORMAL";
 		const string SKW_VOXELPLAY_USE_PIXEL_LIGHTS = "VOXELPLAY_PIXEL_LIGHTS";
+		const string SKW_VOXELPLAY_TRANSP_BLING = "VOXELPLAY_TRANSP_BLING";
 
 		[NonSerialized]
 		public System.Diagnostics.Stopwatch stopWatch;
@@ -57,6 +61,7 @@ namespace VoxelPlay {
 		Camera sceneCam;
 		Collider characterControllerCollider;
 		float lastTimeOfDay, lastAzimuth;
+		Material modelHighlightMat;
 
 		/// <summary>
 		/// The transform of the world root where all objects created by Voxel Play are placed
@@ -80,8 +85,6 @@ namespace VoxelPlay {
 
 		List<VoxelChunk> tempChunks;
 		Collider[] tempColliders;
-
-		GameObject voxelHighlightGO;
 
 		int[] neighbourOffsets = new int[] { 
 			0, 1, 0, 
@@ -149,7 +152,6 @@ namespace VoxelPlay {
 			initialized = false;
 			sceneCam = null;
 			applicationIsPlaying = Application.isPlaying;
-			draftModeActive = !applicationIsPlaying && editorDraftMode;
 			tempChunks = new List<VoxelChunk> ();
 			tempColliders = new Collider[1];
 			InitMainThreading ();
@@ -166,10 +168,8 @@ namespace VoxelPlay {
 			#endif
 
 #if UNITY_WEBGL
-            effectiveUseGeometryShaders = false;
             effectiveMultithreadGeneration = false;
 #else
-			effectiveUseGeometryShaders = useGeometryShaders && !isMobilePlatform && SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Metal;
 			effectiveMultithreadGeneration = multiThreadGeneration;
 #endif
 
@@ -191,8 +191,9 @@ namespace VoxelPlay {
 			}
 			if (characterController != null) {
 				characterControllerCollider = characterController.GetComponent<CharacterController> ();
-				if (characterControllerCollider == null)
+				if (characterControllerCollider == null) {
 					characterControllerCollider = characterController.GetComponent<Collider> ();
+				}
 			}
 
 			#if UNITY_EDITOR
@@ -217,7 +218,6 @@ namespace VoxelPlay {
 			if (crosshairTexture == null) {
 				crosshairTexture = Resources.Load<Texture2D> ("VoxelPlay/UI/crosshairTexture");
 			}
-
 
 			#if UNITY_EDITOR
 			input = new KeyboardMouseController ();
@@ -252,6 +252,7 @@ namespace VoxelPlay {
 			} else {
 				UpdateAmbientProperties ();
 			}
+
 		}
 
 		IEnumerator WarmChunks (AfterInitCallback callback) {
@@ -260,6 +261,7 @@ namespace VoxelPlay {
 #if UNITY_EDITOR
 			required = prewarmChunksInEditor;
 #endif
+
 			if (world != null) {
 				while (chunksPoolLoadIndex < maxChunks) {
 					try {
@@ -272,7 +274,7 @@ namespace VoxelPlay {
 					}
 					if (enableLoadingPanel) {
 						float progress = (float)(chunksPoolLoadIndex + 1) / required;
-						VoxelPlayUI.instance.ToggleInitializationPanel (true, progress);
+						VoxelPlayUI.instance.ToggleInitializationPanel (true, loadingText, progress);
 					}
 					yield return w;
 					if (chunksPoolLoadIndex > required)
@@ -323,13 +325,36 @@ namespace VoxelPlay {
 			}
 			#endif
 
-			VoxelPlayUI.instance.ToggleInitializationPanel (false);
-
-			ShowMessage (welcomeMessage, welcomeMessageDuration, true);
-
 			if (callback != null) {
 				callback ();
 			}
+
+			if (initialWaitTime > 0 && Application.isPlaying) {
+				input.enabled = false;
+				StartCoroutine (DoWaitTime ());
+			} else {
+				EndWaitTime ();
+			}
+		}
+
+		IEnumerator DoWaitTime () {
+			WaitForSeconds w = new WaitForSeconds (0.2f);
+			float start = Time.time;
+			while (Time.time - start < initialWaitTime) {
+				float progress = (Time.time - start) / initialWaitTime;
+				if (progress > 1f) {
+					progress = 1f;
+				}
+				VoxelPlayUI.instance.ToggleInitializationPanel (true, initialWaitText, progress);
+				yield return w;
+			}
+			EndWaitTime ();
+		}
+
+		void EndWaitTime () {
+			input.enabled = true;
+			VoxelPlayUI.instance.ToggleInitializationPanel (false);
+			ShowMessage (welcomeMessage, welcomeMessageDuration, true);
 		}
 
 		/// <summary>
@@ -337,6 +362,7 @@ namespace VoxelPlay {
 		/// </summary>
 		void LoadWorldInt () {
 			DisposeAll ();
+
 			if (world == null) {
 				if (Application.isPlaying) {
 					world = ScriptableObject.CreateInstance<WorldDefinition> ();
@@ -371,6 +397,7 @@ namespace VoxelPlay {
 			lastCamPos.y += 0.0001f; // forces check chunks in frustum
 			InitClouds ();
 			InitPhysics ();
+			InitTileRules ();
 			UpdateMaterialProperties ();
 			SetBuildMode (buildMode);
 		}
@@ -465,7 +492,7 @@ namespace VoxelPlay {
 
 				STAGE = 41;
 				// Render instanced objects
-				instancingManager.Render (currentCamPos, _visibleChunksDistance);
+				instancingManager.Render (currentCamPos, _visibleChunksDistance, frustumPlanesNormals, frustumPlanesDistances);
 
 				// end cycle
 			} catch (Exception ex) {
@@ -684,12 +711,12 @@ namespace VoxelPlay {
 #endif
 
 			if ((Voxel.supportsTinting && !enableTinting) || (!Voxel.supportsTinting && enableTinting)) {
-				UpdateTintingCodeMacro (enableTinting);
+				UpdateTintingCodeMacro ();
 			}
 		}
 
-		public void UpdateTintingCodeMacro (bool enableTinting) {
-			string[] res = Directory.GetFiles (Application.dataPath, "Voxel.cs", SearchOption.AllDirectories);
+		public void SetShaderOptionValue (string option, string file, bool state) {
+			string[] res = Directory.GetFiles (Application.dataPath, file, SearchOption.AllDirectories);
 			string path = null;
 			for (int k = 0; k < res.Length; k++) {
 				if (res [k].Contains ("Voxel Play")) {
@@ -698,35 +725,66 @@ namespace VoxelPlay {
 				}
 			}
 			if (path == null) {
-				Debug.LogError ("Voxel.cs could not be found!");
+				Debug.LogError (file + " could not be found!");
 				return;
 			}
 
-			string[] code = File.ReadAllLines (path);
-			bool found = false;
+			string[] code = File.ReadAllLines (path, System.Text.Encoding.UTF8);
+			string searchToken = "#define " + option;
 			for (int k = 0; k < code.Length; k++) {
-				if (code [k].Contains ("USES_TINTING")) {
-					found = true;
-					if (enableTinting) {
-						code [k] = "#define USES_TINTING";
+				if (code [k].Contains (searchToken)) {
+					if (state) {
+						code [k] = "#define " + option;
 					} else {
-						code [k] = "//#define USES_TINTING";
+						code [k] = "//#define " + option;
 					}
+					File.WriteAllLines (path, code, System.Text.Encoding.UTF8);
 					break;
 				}
 			}
+		}
 
-			if (!found) {
-				Debug.LogWarning ("USES_TINTING macro not found in Voxel.cs!");
+		public void SetShaderOptionValue (string option, string file, string value) {
+			string[] res = Directory.GetFiles (Application.dataPath, file, SearchOption.AllDirectories);
+			string path = null;
+			for (int k = 0; k < res.Length; k++) {
+				if (res [k].Contains ("Voxel Play")) {
+					path = res [k];
+					break;
+				}
+			}
+			if (path == null) {
+				Debug.LogError (file + " could not be found!");
 				return;
 			}
 
-			File.WriteAllLines (path, code);
+			string[] code = File.ReadAllLines (path, System.Text.Encoding.UTF8);
+			string searchToken = "#define " + option;
+			for (int k = 0; k < code.Length; k++) {
+				if (code [k].Contains (searchToken)) {
+					code [k] = "#define " + option + " " + value;
+					File.WriteAllLines (path, code, System.Text.Encoding.UTF8);
+					break;
+				}
+			}
+		}
+
+
+		public void UpdateTintingCodeMacro () {
+			SetShaderOptionValue ("USES_TINTING", "Voxel.cs", enableTinting);
 			AssetDatabase.Refresh ();
 		}
 
 
 		#endif
+
+		#endregion
+
+		#region Misc functions
+
+		public List<T> GetList<T> (int proposedSize) {
+			return new List<T> (lowMemoryMode ? 4 : proposedSize);
+		}
 
 		#endregion
 

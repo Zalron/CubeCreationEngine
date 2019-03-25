@@ -4,14 +4,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace VoxelPlay
-{
+namespace VoxelPlay {
 
-	public partial class VoxelPlayEnvironment : MonoBehaviour
-	{
+	public partial class VoxelPlayEnvironment : MonoBehaviour {
 
-		struct VegetationRequest
-		{
+		struct VegetationRequest {
 			public VoxelChunk chunk;
 			public int voxelIndex;
 			public VoxelDefinition vd;
@@ -23,8 +20,7 @@ namespace VoxelPlay
 		VegetationRequest[] vegetationRequests;
 		int vegetationRequestLast, vegetationRequestFirst;
 
-		void InitVegetation ()
-		{
+		void InitVegetation () {
 			if (vegetationRequests == null || vegetationRequests.Length != VEGETATION_CREATION_BUFFER_SIZE) {
 				vegetationRequests = new VegetationRequest[VEGETATION_CREATION_BUFFER_SIZE];
 			}
@@ -35,13 +31,7 @@ namespace VoxelPlay
 		/// <summary>
 		/// Requests the vegetation creation.
 		/// </summary>
-		/// <param name="chunkOriginalIndex">Chunk original index.</param>
-		/// <param name="chunkOriginalPosition">Chunk original position.</param>
-		/// <param name="position">Position.</param>
-		/// <param name="biome">Biome.</param>
-		/// <param name="rn">Random value, used to pick the vegetation model.</param>
-		public void RequestVegetationCreation (VoxelChunk chunk, int voxelIndex, VoxelDefinition vd)
-		{ // BiomeDefinition biome, float random) {
+		public void RequestVegetationCreation (VoxelChunk chunk, int voxelIndex, VoxelDefinition vd) { 
 			if (chunk == null) {
 				return;
 			}
@@ -61,8 +51,7 @@ namespace VoxelPlay
 		/// <summary>
 		/// Monitors queue of new vegetations requests. This function calls Createvegetation to create the vegetation data and pushes a chunk refresh.
 		/// </summary>
-		void CheckVegetationRequests (long endTime)
-		{
+		void CheckVegetationRequests (long endTime) {
 			int max = maxBushesPerFrame > 0 ? maxBushesPerFrame : 10000;
 			for (int k = 0; k < max; k++) {
 				if (vegetationRequestFirst == vegetationRequestLast)
@@ -88,8 +77,7 @@ namespace VoxelPlay
 		/// <returns>The vegetation.</returns>
 		/// <param name="biome">Biome.</param>
 		/// <param name="random">Random.</param>
-		public VoxelDefinition GetVegetation (BiomeDefinition biome, float random)
-		{
+		public VoxelDefinition GetVegetation (BiomeDefinition biome, float random) {
 			float acumProb = 0;
 			int index = 0;
 			for (int t = 0; t < biome.vegetation.Length; t++) {
@@ -108,8 +96,7 @@ namespace VoxelPlay
 		/// <param name="position">Position.</param>
 		/// <param name="biome">Biome.</param>
 		/// <param name="random">Random.</param>
-		void CreateVegetation (VoxelChunk chunk, int voxelIndex, VoxelDefinition vd)
-		{
+		void CreateVegetation (VoxelChunk chunk, int voxelIndex, VoxelDefinition vd) {
 
 			if (chunk != null) {
 				// Updates current chunk

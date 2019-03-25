@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace VoxelPlay {
 
-	public static class NoiseTools {
+	public static partial class NoiseTools {
 
 		/// <summary>
 		/// Random seeded offsets to the terrain sampling. Used to provide different terrain outputs by translating the zero position.
@@ -41,6 +41,7 @@ namespace VoxelPlay {
 			return values;
 		}
 
+
 		/// <summary>
 		/// Samples a 2D noise texture at a given world position (returns raw value)
 		/// </summary>
@@ -61,17 +62,16 @@ namespace VoxelPlay {
 
 			// Texture array position
 			int ty0 = posZInt % textureSize;
-			if (ty0 < 0)
-				ty0 += textureSize;
 			int tx0 = posXInt % textureSize;
-			if (tx0 < 0)
-				tx0 += textureSize;
 
 			float value = noiseArray[ty0 * textureSize + tx0];
 			if (ridgeNoise) {
 				value = 0.5f - value;
-				if (value < 0) value *= -1f;
-				value = 2f * (0.5f - value);
+				if (value < 0) {
+					value = 2f * (0.5f + value);
+				} else {
+					value = 2f * (0.5f - value);
+				}
 			}
 			return value;
 		}
@@ -98,11 +98,7 @@ namespace VoxelPlay {
 
 			// Texture array position
 			int ty0 = posZInt % textureSize;
-			if (ty0 < 0)
-				ty0 += textureSize;
 			int tx0 = posXInt % textureSize;
-			if (tx0 < 0)
-				tx0 += textureSize;
 
 			// Get noise for upper/left corner
 			int ty, tx;
@@ -123,8 +119,11 @@ namespace VoxelPlay {
 
 			if (ridgeNoise) {
 				value = 0.5f - value;
-				if (value < 0) value *= -1f;
-				value = 2f * (0.5f - value);
+				if (value < 0) {
+					value = 2f * (0.5f + value);
+				} else {
+					value = 2f * (0.5f - value);
+				}
 			}
 			return value;
 		}

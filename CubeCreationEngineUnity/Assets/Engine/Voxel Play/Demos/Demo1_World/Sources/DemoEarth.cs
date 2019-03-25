@@ -25,8 +25,17 @@ namespace VoxelPlayDemos {
 
 
 		void OnInitialized () {
+
+			// Item definitions are stored in Items folder within the world name folder
+
 			// Add 3 torches to initial player inventory
-			VoxelPlayPlayer.instance.AddInventoryItem (env.GetItemByType (ItemCategory.Torch), 3);
+			VoxelPlayPlayer.instance.AddInventoryItem (env.GetItemDefinition (ItemCategory.Torch), 3);
+
+			// Add a shovel (no need to specify quantity it's 1 unit)
+			VoxelPlayPlayer.instance.AddInventoryItem (env.GetItemDefinition ("Shovel"));
+
+			// Add a sword 
+			VoxelPlayPlayer.instance.AddInventoryItem (env.GetItemDefinition ("Sword"));
 
 			// Add special instructions after 4 seconds of game running
 			Invoke ("SpecialKeys", 4);

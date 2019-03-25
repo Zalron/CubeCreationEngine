@@ -7,11 +7,9 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 
-namespace VoxelPlay
-{
+namespace VoxelPlay {
 
-	public partial class VoxelPlayEnvironment : MonoBehaviour
-	{
+	public partial class VoxelPlayEnvironment : MonoBehaviour {
 
 		// Lightmap renderer
 		int[] tempLightmapPos;
@@ -30,13 +28,11 @@ namespace VoxelPlay
 
 
 		/// <summary>
-		/// Computes light propagation
+		/// Computes light propagation. Only Sun light. Other light sources like torches are handled in the shader itself.
 		/// </summary>e
 		/// <returns><c>true</c>, if lightmap was built, <c>false</c> if no changes or light detected.</returns>
 		/// <param name="chunk">Chunk.</param>
-		void ComputeLightmap (VoxelChunk chunk, bool clearLightmap)
-		{
-
+		void ComputeLightmap (VoxelChunk chunk) {
 			if (!effectiveGlobalIllumination) {
 				return;
 			}
@@ -47,21 +43,13 @@ namespace VoxelPlay
 
 			bool isAboveSurface = chunk.isAboveSurface;
 			int lightmapSignature = 0; // used to detect lightmap changes that trigger mesh rebuild
-
-			if (clearLightmap) {
-				chunk.ClearLightmap ();
-			}
-
 			tempLightmapIndex = -1;
-
-			bool topChunkIsAccesible = false, bottomChunkIsAccesible = false, leftChunkIsAccesible = false;
-			bool rightChunkIsAccesible = false, backChunkIsAccesible = false, forwardChunkIsAccesible = false;
 
 			// Get top chunk but only if it has been rendered at least once.
 			// means that the top chunk is not available which in the case of surface will switch to the heuristic of heightmap (see else below)
 			VoxelChunk topChunk = chunk.top;
-			if (topChunk && topChunk.isPopulated) {
-				topChunkIsAccesible = true;
+			bool topChunkIsAccesible = topChunk && topChunk.isPopulated;
+			if (topChunkIsAccesible) {
 				for (int z = 0; z <= 15; z++) {
 					int bottom = z * ONE_Z_ROW;
 					int top = bottom + 15 * ONE_Y_ROW;
@@ -93,8 +81,8 @@ namespace VoxelPlay
 
 			// Check bottom chunk
 			VoxelChunk bottomChunk = chunk.bottom;
-			if (bottomChunk && bottomChunk.isPopulated) {
-				bottomChunkIsAccesible = true;
+			bool bottomChunkIsAccesible = bottomChunk && bottomChunk.isPopulated;
+			if (bottomChunkIsAccesible) {
 				for (int z = 0; z <= 15; z++) {
 					int bottom = z * ONE_Z_ROW;
 					int top = bottom + 15 * ONE_Y_ROW;
@@ -126,8 +114,8 @@ namespace VoxelPlay
 
 			// Check left face
 			VoxelChunk leftChunk = chunk.left;
-			if (leftChunk && leftChunk.isPopulated) {
-				leftChunkIsAccesible = true;
+			bool leftChunkIsAccesible = leftChunk && leftChunk.isPopulated;
+			if (leftChunkIsAccesible) {
 				for (int y = 15; y >= 0; y--) {
 					int left = y * ONE_Y_ROW;
 					int right = left + 15;
@@ -160,8 +148,8 @@ namespace VoxelPlay
 
 			// Check right face
 			VoxelChunk rightChunk = chunk.right;
-			if (rightChunk && rightChunk.isPopulated) {
-				rightChunkIsAccesible = true;
+			bool rightChunkIsAccesible = rightChunk && rightChunk.isPopulated;
+			if (rightChunkIsAccesible) {
 				for (int y = 15; y >= 0; y--) {
 					int left = y * ONE_Y_ROW;
 					int right = left + 15;
@@ -193,8 +181,8 @@ namespace VoxelPlay
 
 			// Check forward face
 			VoxelChunk forwardChunk = chunk.forward;
-			if (forwardChunk && forwardChunk.isPopulated) {
-				forwardChunkIsAccesible = true;
+			bool forwardChunkIsAccesible = forwardChunk && forwardChunk.isPopulated;
+			if (forwardChunkIsAccesible) {
 				for (int y = 15; y >= 0; y--) {
 					int back = y * ONE_Y_ROW;
 					int forward = back + 15 * ONE_Z_ROW;
@@ -226,8 +214,8 @@ namespace VoxelPlay
 
 			// Check back face
 			VoxelChunk backChunk = chunk.back;
-			if (backChunk && backChunk.isPopulated) {
-				backChunkIsAccesible = true;
+			bool backChunkIsAccesible = backChunk && backChunk.isPopulated;
+			if (backChunkIsAccesible) {
 				for (int y = 15; y >= 0; y--) {
 					int back = y * ONE_Y_ROW;
 					int forward = back + 15 * ONE_Z_ROW;
@@ -256,10 +244,6 @@ namespace VoxelPlay
 					}
 				}
 			}
-
-			// Add light sources
-			// Since v3 light sources are added in the shader itself
-
 
 			int index = 0;
 			int notIsAboveSurfaceReduction, isAboveSurfaceReduction;
@@ -294,7 +278,7 @@ namespace VoxelPlay
 				if (py == 0) {
 					if (bottomChunkIsAccesible) {
 						int up = voxelIndex + 15 * ONE_Y_ROW;
-						if (bottomChunk.voxels [up].light < reducedLight || bottomChunk.voxels [up].hasContent == 1) {
+						if (bottomChunk.voxels [up].light < reducedLight) {
 							bottomChunkIsAccesible = false;
 							ChunkRequestRefresh (bottomChunk, false, false);
 						}
@@ -316,11 +300,19 @@ namespace VoxelPlay
 				int pz = remy / ONE_Z_ROW;
 				int px = remy - pz * ONE_Z_ROW;
 
+				if (chunk.position.x == 520 && chunk.position.y == 8 && chunk.position.z == -296) {
+					if (py == 11 && px == 11 && pz == 10) {
+						int jj = 9;
+						jj++;
+					}
+				}
+
+
 				// backwards
 				if (pz == 0) {
 					if (backChunkIsAccesible) {
 						int forward = voxelIndex + 15 * ONE_Z_ROW;
-						if (backChunk.voxels [forward].light < reducedLight || backChunk.voxels [forward].hasContent == 1) {
+						if (backChunk.voxels [forward].light < reducedLight) {
 							backChunkIsAccesible = false;
 							ChunkRequestRefresh (backChunk, false, false);
 						}
@@ -338,7 +330,7 @@ namespace VoxelPlay
 				if (pz == 15) {
 					if (forwardChunkIsAccesible) {
 						int back = voxelIndex - 15 * ONE_Z_ROW;
-						if (forwardChunk.voxels [back].light < reducedLight || forwardChunk.voxels [back].hasContent == 1) {
+						if (forwardChunk.voxels [back].light < reducedLight) {
 							forwardChunkIsAccesible = false;
 							ChunkRequestRefresh (forwardChunk, false, false);
 						}
@@ -356,7 +348,7 @@ namespace VoxelPlay
 				if (px == 0) {
 					if (leftChunkIsAccesible) {
 						int right = voxelIndex + 15;
-						if (leftChunk.voxels [right].light < reducedLight || leftChunk.voxels [right].hasContent == 1) {
+						if (leftChunk.voxels [right].light < reducedLight) {
 							leftChunkIsAccesible = false;
 							ChunkRequestRefresh (leftChunk, false, false);
 						}
@@ -374,7 +366,7 @@ namespace VoxelPlay
 				if (px == 15) {
 					if (rightChunkIsAccesible) {
 						int left = voxelIndex - 15;
-						if (rightChunk.voxels [left].light < reducedLight || rightChunk.voxels [left].hasContent == 1) {
+						if (rightChunk.voxels [left].light < reducedLight) {
 							rightChunkIsAccesible = false;
 							ChunkRequestRefresh (rightChunk, false, false);
 						}
@@ -392,7 +384,7 @@ namespace VoxelPlay
 				if (py == 15) {
 					if (topChunkIsAccesible) {
 						int down = voxelIndex - 15 * ONE_Y_ROW;
-						if (topChunk.voxels [down].light < reducedLight || topChunk.voxels [down].hasContent == 1) {
+						if (topChunk.voxels [down].light < reducedLight) {
 							topChunkIsAccesible = false;
 							ChunkRequestRefresh (topChunk, false, false);
 						}
@@ -414,6 +406,8 @@ namespace VoxelPlay
 				chunk.lightmapSignature = lightmapSignature;
 				chunk.needsMeshRebuild = true;
 			}
+
+			chunk.lightmapIsClear = false;
 		}
 
 		#endregion

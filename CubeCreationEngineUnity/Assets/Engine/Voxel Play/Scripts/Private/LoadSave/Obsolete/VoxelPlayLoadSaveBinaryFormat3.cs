@@ -37,7 +37,7 @@ namespace VoxelPlay
 			InitSaveGameStructs ();
 			int vdCount = br.ReadInt16 (); 
 			for (int k = 0; k < vdCount; k++) {
-				saveVoxelDefinitionList.Add (br.ReadString ());
+				saveVoxelDefinitionsList.Add (br.ReadString ());
 			}
 
 			int numChunks = br.ReadInt32 ();
@@ -68,7 +68,7 @@ namespace VoxelPlay
 					int vdIndex = br.ReadInt16 ();
 					if (prevVdIndex != vdIndex) {
 						if (vdIndex >= 0 && vdIndex < vdCount) {
-							voxelDefinition = GetVoxelDefinition (saveVoxelDefinitionList [vdIndex]);
+							voxelDefinition = GetVoxelDefinition (saveVoxelDefinitionsList [vdIndex]);
 							prevVdIndex = vdIndex;
 						}
 					}
@@ -112,7 +112,8 @@ namespace VoxelPlay
 			}
 		}
 
-
+// Preserved and commented for reference purposes
+//
 //		void SaveGameBinaryFormat_3 (BinaryWriter bw)
 //		{
 //

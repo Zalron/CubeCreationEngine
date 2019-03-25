@@ -33,7 +33,7 @@ namespace VoxelPlayDemos
 
 		void SpecialInfo ()
 		{
-			env.ShowMessage ("<color=green>Use <color=yellow>Mouse Scroll Wheel</color> to zoom in/out, <color=yellow>Space</color> to jump, <color=yellow>C</color> to crouch</color>", 20, true);
+			env.ShowMessage ("<color=green>Press <color=yellow>WASD</color> to move, <color=yellow>Mouse Scroll Wheel</color> to zoom in/out, <color=yellow>Right Mouse Button</color> to rotate view, <color=yellow>Space</color> to jump, <color=yellow>C</color> to crouch</color>", 20, true);
 		}
 
 

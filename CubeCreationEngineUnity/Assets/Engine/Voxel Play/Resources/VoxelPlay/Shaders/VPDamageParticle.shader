@@ -6,7 +6,6 @@
     	_TexSides ("Particle Texture Sides", 2D) = "white" {}
     	_TexBottom ("Particle Texture Bottom", 2D) = "white" {}
     	_VoxelLight ("Voxel Ambient Light", Float) = 1
-    	_VPAmbientLight ("Ambient Light", Float) = 0
     	_FlashDelay("Flash Delay", Float) = 0
     	_Color ("Tint Color", Color) = (1,1,1)
     }
@@ -23,6 +22,7 @@
             #pragma multi_compile _ VERTEXLIGHT_ON
             #include "UnityCG.cginc"
             #include "UnityLightingCommon.cginc"
+            #include "VPCommonVertexModifier.cginc"
 
             struct v2f
             {
@@ -49,6 +49,9 @@
                 float disp = sin(-_Time.w * _FlashDelay + _AnimSeed);
                 v.vertex.xyz *= 1.0 + abs(disp) * 0.1;
                 v.vertex.y += 0.5 + disp * 0.25;
+                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+				VOXELPLAY_MODIFY_VERTEX(v.vertex, worldPos)
+
                 o.vertex = UnityObjectToClipPos(v.vertex);
                 o.uv.xy = TRANSFORM_TEX(v.texcoord.xy, _MainTex);
                 o.normal = v.normal;
@@ -59,7 +62,6 @@
                 // factor in the light color
                 o.diff = max(saturate(nl), _VPAmbientLight) * _VoxelLight * _LightColor0.rgb;
                 #if defined(VERTEXLIGHT_ON)
-                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.vertexLightColor = Shade4PointLights(unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,unity_LightColor[0].rgb, unity_LightColor[1].rgb,unity_LightColor[2].rgb, unity_LightColor[3].rgb,unity_4LightAtten0, worldPos, worldNormal);
                 #endif
                 return o;

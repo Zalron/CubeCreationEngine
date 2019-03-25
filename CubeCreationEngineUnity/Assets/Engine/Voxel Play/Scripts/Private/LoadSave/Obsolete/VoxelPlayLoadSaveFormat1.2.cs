@@ -34,7 +34,7 @@ namespace VoxelPlay {
 			InitSaveGameStructs();
 			int vdCount = int.Parse(sr.ReadLine());
 			for (int k = 0; k < vdCount; k++) {
-				saveVoxelDefinitionList.Add(sr.ReadLine());
+				saveVoxelDefinitionsList.Add(sr.ReadLine());
 			}
 
 			// Read chunks
@@ -64,7 +64,7 @@ namespace VoxelPlay {
 						continue;
 					// Voxel definition
 					int vdIndex = int.Parse(wordData[0]);
-					VoxelDefinition voxelDefinition = GetVoxelDefinition(saveVoxelDefinitionList[vdIndex]);
+					VoxelDefinition voxelDefinition = GetVoxelDefinition(saveVoxelDefinitionsList[vdIndex]);
 					if (voxelDefinition == null) {
 						voxelDefinition = defaultVoxel; // should not happen
 					}
@@ -129,9 +129,9 @@ namespace VoxelPlay {
 						if (vd == null || vd == last)
 							continue;
 						last = vd;
-						if (!saveVoxelDefinitionDict.ContainsKey(vd)) {
-							saveVoxelDefinitionDict[vd] = count++;
-							saveVoxelDefinitionList.Add(vd.name);
+						if (!saveVoxelDefinitionsDict.ContainsKey(vd)) {
+							saveVoxelDefinitionsDict[vd] = count++;
+							saveVoxelDefinitionsList.Add(vd.name);
 						}
 					}
 				}
@@ -146,10 +146,10 @@ namespace VoxelPlay {
 			// Character controller's camera local rotation
 			sw.WriteLine(cameraMain.transform.localRotation.eulerAngles.x + "," + cameraMain.transform.localRotation.eulerAngles.y + "," + cameraMain.transform.localRotation.eulerAngles.z);
 			// Add voxel definitions table
-			int vdCount = saveVoxelDefinitionList.Count;
+			int vdCount = saveVoxelDefinitionsList.Count;
 			sw.WriteLine(vdCount);
 			for (int k = 0; k < vdCount; k++) {
-				sw.WriteLine(saveVoxelDefinitionList[k]);
+				sw.WriteLine(saveVoxelDefinitionsList[k]);
 			}
 			// Add modified chunks
 			foreach (KeyValuePair<int, CachedChunk>kv in cachedChunks) {
@@ -175,7 +175,7 @@ namespace VoxelPlay {
 					int voxelIndex = k;
 					VoxelDefinition voxelDefinition = chunk.voxels[k].type;
 					int voxelDefinitionIndex;
-					if (!saveVoxelDefinitionDict.TryGetValue(voxelDefinition, out voxelDefinitionIndex))
+					if (!saveVoxelDefinitionsDict.TryGetValue(voxelDefinition, out voxelDefinitionIndex))
 						continue;
 					Color32 tintColor = chunk.voxels[k].color;
 					int waterLevel = 15;

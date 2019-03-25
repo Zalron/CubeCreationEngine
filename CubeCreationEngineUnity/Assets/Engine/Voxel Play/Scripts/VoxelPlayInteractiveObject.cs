@@ -9,6 +9,7 @@ using System.Collections;
 
 namespace VoxelPlay {
 				
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000049602-interactive-objects")]
 	public abstract class VoxelPlayInteractiveObject : MonoBehaviour {
 
 		/// <summary>

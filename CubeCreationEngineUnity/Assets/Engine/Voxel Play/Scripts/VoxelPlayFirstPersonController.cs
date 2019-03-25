@@ -6,9 +6,8 @@ using Random = UnityEngine.Random;
 
 namespace VoxelPlay {
 
-	[RequireComponent (typeof(CharacterController))]
-	[RequireComponent (typeof(AudioSource))]
 	[ExecuteInEditMode]
+	[HelpURL ("https://kronnect.freshdesk.com/support/solutions/articles/42000001854-voxel-play-fps-controller")]
 	public partial class VoxelPlayFirstPersonController : VoxelPlayCharacterControllerBase {
 
 		[Header ("Movement")]
@@ -26,12 +25,19 @@ namespace VoxelPlay {
 		[SerializeField] private CurveControlledBob m_HeadBob = new CurveControlledBob ();
 		[SerializeField] private LerpControlledBob m_JumpBob = new LerpControlledBob ();
 
+		[SerializeField, HideInInspector] float _characterHeight = 1.8f;
+
+		public float characterHeight {
+			get {
+				return hasCharacterController ? m_CharacterController.height : _characterHeight;
+			}
+		}
+
 		[Header ("Orbit")]
 		public bool orbitMode;
 		public Vector3 lookAt;
 		public float minDistance = 1f;
 		public float maxDistance = 100f;
-
 
 		// internal fields
 		Camera m_Camera;
@@ -59,6 +65,11 @@ namespace VoxelPlay {
 		VoxelPlayInputController input;
 
 		static VoxelPlayFirstPersonController _firstPersonController;
+		public bool hasCharacterController;
+
+		public CharacterController characterController {
+			get { return m_CharacterController; }
+		}
 
 		public static VoxelPlayFirstPersonController instance {
 			get {
@@ -71,30 +82,77 @@ namespace VoxelPlay {
 
 		void OnEnable () {
 			m_CharacterController = GetComponent<CharacterController> ();
-			m_CharacterController.stepOffset = 0.4f;
+			hasCharacterController = m_CharacterController != null;
+			if (hasCharacterController) {
+				m_CharacterController.stepOffset = 0.4f;
+			}
 			env = VoxelPlayEnvironment.instance;
 			if (env == null) {
 				Debug.LogError ("Voxel Play Environment must be added first.");
 			} else {
 				env.characterController = this;
 			}
-			crouch = transform.Find ("Crouch").transform;
+			crouch = transform.Find ("Crouch");
 		}
 
 		void Start () {
 			base.Init ();
 			m_Camera = GetComponentInChildren<Camera> ();
-			if (env != null)
-				env.cameraMain = m_Camera;
-			m_Camera.nearClipPlane = 0.1f; // good value for interacting with water
-			m_OriginalCameraPosition = m_Camera.transform.localPosition;
-			m_FovKick.Setup (m_Camera);
-			m_HeadBob.Setup (m_Camera, footStepInterval);
+			if (m_Camera != null) {
+				if (env != null)
+					env.cameraMain = m_Camera;
+				m_Camera.nearClipPlane = 0.1f; // good value for interacting with water
+				m_OriginalCameraPosition = m_Camera.transform.localPosition;
+				if (hasCharacterController) {
+					m_FovKick.Setup (m_Camera);
+					m_HeadBob.Setup (m_Camera, footStepInterval);
+				}
+			}
 			m_Jumping = false;
 
 			if (env == null || !env.applicationIsPlaying)
 				return;
 
+			InitUnderwaterEffect ();
+
+			ToggleCharacterController (false);
+			input = env.input;
+
+			if (hasCharacterController) {
+
+				// Position character on ground
+				if (!env.saveFileIsLoaded) {
+					if (startOnFlat && env.world != null) {
+						float minAltitude = env.world.terrainGenerator.maxHeight;
+						Vector3 flatPos = transform.position;
+						Vector3 randomPos;
+						for (int k = 0; k < startOnFlatIterations; k++) {
+							randomPos = Random.insideUnitSphere * 1000;
+							float alt = env.GetTerrainHeight (randomPos);
+							if (alt < minAltitude && alt >= env.waterLevel + 1) {
+								minAltitude = alt;
+								randomPos.y = alt + characterHeight + 1;
+								flatPos = randomPos;
+							}
+						}
+						transform.position = flatPos;
+					}
+				}
+
+				SetOrbitMode (orbitMode);
+				mouseLook.Init (transform, m_Camera.transform, input);
+			}
+
+			InitCrosshair ();
+
+			if (!env.initialized) {
+				env.OnInitialized += () => WaitForCurrentChunk ();
+			} else {
+				WaitForCurrentChunk ();
+			}
+		}
+
+		void InitUnderwaterEffect () {
 			underwaterPanel = Instantiate<GameObject> (Resources.Load<GameObject> ("VoxelPlay/Prefabs/UnderwaterPanel"), m_Camera.transform);
 			underwaterPanel.name = "UnderwaterPanel";
 			Renderer underwaterRenderer = underwaterPanel.GetComponent<Renderer> ();
@@ -104,40 +162,6 @@ namespace VoxelPlay {
 
 			underwaterPanel.transform.localPosition = new Vector3 (0, 0, m_Camera.nearClipPlane + 0.001f);
 			underwaterPanel.SetActive (false);
-
-			ToggleCharacterController (false);
-
-			// Position character on ground
-			if (!env.saveFileIsLoaded) {
-				if (startOnFlat && env.world != null) {
-					float minAltitude = env.world.terrainGenerator.maxHeight;
-					Vector3 flatPos = transform.position;
-					Vector3 randomPos;
-					for (int k = 0; k < startOnFlatIterations; k++) {
-						randomPos = Random.insideUnitSphere * 1000;
-						float alt = env.GetTerrainHeight (randomPos);
-						if (alt < minAltitude && alt >= env.waterLevel + 1) {
-							minAltitude = alt;
-							randomPos.y = alt + m_CharacterController.height + 1;
-							flatPos = randomPos;
-						}
-					}
-					transform.position = flatPos;
-				}
-			}
-
-			input = env.input;
-
-			InitCrosshair ();
-
-			SetOrbitMode (orbitMode);
-			mouseLook.Init (transform, m_Camera.transform, input);
-
-			if (!env.initialized) {
-				env.OnInitialized += () => WaitForCurrentChunk ();
-			} else {
-				WaitForCurrentChunk ();
-			}
 		}
 
 
@@ -154,7 +178,9 @@ namespace VoxelPlay {
 		/// </summary>
 		/// <param name="state">If set to <c>true</c> state.</param>
 		public void ToggleCharacterController (bool state) {
-			m_CharacterController.enabled = state;
+			if (hasCharacterController) {
+				m_CharacterController.enabled = state;
+			}
 			enabled = state;
 		}
 
@@ -173,11 +199,28 @@ namespace VoxelPlay {
 			}
 			Unstuck (true);
 			ToggleCharacterController (true);
+			if (!hasCharacterController) {
+				switchingLapsed = 1f;
+			}
 		}
 
 		void Update () {
 			if (env == null || !env.applicationIsPlaying || !env.initialized || input == null)
 				return;
+
+			curPos = transform.position;
+
+			if (hasCharacterController) {
+				UpdateWithCharacterController ();
+			} else {
+				UpdateSimple ();
+			}
+
+		}
+
+		void UpdateWithCharacterController () {
+
+			CheckFootfalls ();
 
 			RotateView ();
 
@@ -188,10 +231,6 @@ namespace VoxelPlay {
 			if (!m_Jump && !isFlying) {
 				m_Jump = input.GetButtonDown (InputButtonNames.Jump);
 			}
-
-			curPos = transform.position;
-
-			CheckFootfalls ();
 
 			if (!m_PreviouslyGrounded && m_CharacterController.isGrounded) {
 				StartCoroutine (m_JumpBob.DoBobCycle ());
@@ -204,6 +243,104 @@ namespace VoxelPlay {
 			}
 
 			m_PreviouslyGrounded = m_CharacterController.isGrounded;
+
+			// Process click events
+			if (input.focused && input.enabled) {
+				bool leftAltPressed = input.GetButton (InputButtonNames.LeftAlt);
+				bool leftShiftPressed = input.GetButton (InputButtonNames.LeftShift);
+				bool leftControlPressed = input.GetButton (InputButtonNames.LeftControl);
+				bool fire1Pressed = input.GetButton (InputButtonNames.Button1);
+
+				if (fire1Pressed) {
+					if (ModelPreviewCancel ()) {
+						fire1Pressed = false;
+						lastHitButtonPressed = Time.time + 0.5f;
+					}
+				}
+
+				bool fire2Clicked = input.GetButtonDown (InputButtonNames.Button2);
+				if (!leftShiftPressed && !leftAltPressed && !leftControlPressed) {
+					if (Time.time - lastHitButtonPressed > player.hitDelay) {
+						if (fire1Pressed) {
+							DoHit (player.hitDamage);
+						}
+					}
+					if (fire2Clicked) {
+						DoHit (0);
+					}
+				}
+
+				if (crosshairOnBlock && input.GetButtonDown (InputButtonNames.MiddleButton)) {
+					player.SetSelectedItem (crosshairHitInfo.voxel.type);
+				}
+
+				if (input.GetButtonDown (InputButtonNames.Build)) {
+					env.SetBuildMode (!env.buildMode);
+					if (env.buildMode) {
+						#if UNITY_EDITOR
+						env.ShowMessage ("<color=green>Entered <color=yellow>Build Mode</color>. Press <color=white>B</color> to cancel, <color=white>V</color> to enter the Constructor.</color>");
+						#else
+						env.ShowMessage ("<color=green>Entered <color=yellow>Build Mode</color>. Press <color=white>B</color> to cancel.</color>");
+						#endif
+					} else {
+						env.ShowMessage ("<color=green>Back to <color=yellow>Normal Mode</color>.</color>");
+					}
+				}
+
+				if (fire2Clicked && !leftAltPressed && !leftShiftPressed) {
+					DoBuild (m_Camera.transform.position, m_Camera.transform.forward, voxelHighlightBuilder != null ? voxelHighlightBuilder.transform.position : Misc.vector3zero);
+				}
+
+				// Toggles Flight mode
+				if (input.GetButtonDown (InputButtonNames.Fly)) {
+					isFlying = !isFlying;
+					if (isFlying) {
+						m_Jumping = false;
+						env.ShowMessage ("<color=green>Flying <color=yellow>ON</color></color>");
+					} else {
+						env.ShowMessage ("<color=green>Flying <color=yellow>OFF</color></color>");
+					}
+				}
+
+				if (isGrounded && !isCrouched && input.GetButtonDown (InputButtonNames.LeftControl)) {
+					isCrouched = true;
+				} else if (isGrounded && isCrouched && input.GetButtonUp (InputButtonNames.LeftControl)) {
+					isCrouched = false;
+				} else if (isGrounded && input.GetButtonDown (InputButtonNames.Crouch)) {
+					isCrouched = !isCrouched;
+					if (isCrouched) {
+						env.ShowMessage ("<color=green>Crouching <color=yellow>ON</color></color>");
+					} else {
+						env.ShowMessage ("<color=green>Crouching <color=yellow>OFF</color></color>");
+					}
+				} else if (input.GetButtonDown (InputButtonNames.Light)) {
+					ToggleCharacterLight ();
+				} else if (input.GetButtonDown (InputButtonNames.ThrowItem)) {
+					ThrowCurrentItem (m_Camera.transform.position, m_Camera.transform.forward);
+				}
+			}
+
+			// Check water
+			CheckWaterStatus ();
+
+			// Check crouch status
+			if (!isInWater) {
+				if (isCrouched && crouch.localPosition.y == 0) {
+					crouch.transform.localPosition = new Vector3 (0, -1f, 0);
+					m_CharacterController.stepOffset = 0.4f;
+				} else if (!isCrouched && crouch.localPosition.y != 0) {
+					crouch.transform.localPosition = Misc.vector3zero;
+					m_CharacterController.stepOffset = 1f;
+				}
+			}
+
+			#if UNITY_EDITOR
+			UpdateConstructor ();
+			#endif
+
+		}
+
+		void UpdateSimple () {
 
 			// Process click events
 			if (input.focused && input.enabled) {
@@ -241,54 +378,12 @@ namespace VoxelPlay {
 				}
 
 				if (fire2Clicked && !leftAltPressed && !leftShiftPressed) {
-					DoBuild ();
-				}
-
-				// Toggles Flight mode
-				if (input.GetButtonDown (InputButtonNames.Fly)) {
-					isFlying = !isFlying;
-					if (isFlying) {
-						env.ShowMessage ("<color=green>Flying <color=yellow>ON</color></color>");
-					} else {
-						env.ShowMessage ("<color=green>Flying <color=yellow>OFF</color></color>");
-					}
-				}
-
-				if (isGrounded && !isCrouched && input.GetButtonDown (InputButtonNames.LeftControl)) {
-					isCrouched = true;
-				} else if (isGrounded && isCrouched && input.GetButtonUp (InputButtonNames.LeftControl)) {
-					isCrouched = false;
-				} else if (isGrounded && input.GetButtonDown (InputButtonNames.Crouch)) {
-					isCrouched = !isCrouched;
-					if (isCrouched) {
-						env.ShowMessage ("<color=green>Crouching <color=yellow>ON</color></color>");
-					} else {
-						env.ShowMessage ("<color=green>Crouching <color=yellow>OFF</color></color>");
-					}
-				} else if (input.GetButtonDown (InputButtonNames.Light)) {
-					ToggleCharacterLight ();
-				} else if (input.GetButtonDown (InputButtonNames.ThrowItem)) {
-					ThrowCurrentItem ();
+					DoBuild (m_Camera.transform.position, m_Camera.transform.forward, voxelHighlightBuilder.transform.position);
 				}
 			}
 
 			// Check water
 			CheckWaterStatus ();
-
-			// Check crouch status
-			if (!isInWater) {
-				if (isCrouched && crouch.localPosition.y == 0) {
-					crouch.transform.localPosition = new Vector3 (0, -1f, 0);
-					m_CharacterController.stepOffset = 0.4f;
-				} else if (!isCrouched && crouch.localPosition.y != 0) {
-					crouch.transform.localPosition = Misc.vector3zero;
-					m_CharacterController.stepOffset = 1f;
-				}
-			}
-
-			#if UNITY_EDITOR
-			UpdateConstructor ();
-			#endif
 
 		}
 
@@ -339,7 +434,7 @@ namespace VoxelPlay {
 			} else {
 
 				// Check if water surrounds camera
-				Voxel voxelCamera = env.GetVoxel (nearClipPos);
+				Voxel voxelCamera = env.GetVoxel (nearClipPos, false);
 				VoxelDefinition voxelCameraType = env.voxelDefinitions [voxelCamera.typeIndex];
 				if (voxelCamera.hasContent == 1) {
 					CheckEnterTrigger (chunk, voxelIndex);
@@ -370,11 +465,13 @@ namespace VoxelPlay {
 			}
 
 			isInWater = isSwimming || isUnderwater;
-			if (!wasInWater && isInWater) {
-				PlayWaterSplashSound ();
-				crouch.localPosition = Misc.vector3down * 0.6f; // crouch
-			} else if (wasInWater && !isInWater) {
-				crouch.localPosition = Misc.vector3zero;
+			if (crouch != null) {
+				if (!wasInWater && isInWater) {
+					PlayWaterSplashSound ();
+					crouch.localPosition = Misc.vector3down * 0.6f; // crouch
+				} else if (wasInWater && !isInWater) {
+					crouch.localPosition = Misc.vector3zero;
+				}
 			}
 
 			// Show/hide underwater panel
@@ -395,119 +492,30 @@ namespace VoxelPlay {
 			} else {
 				ray = m_Camera.ViewportPointToRay (Misc.vector2half);
 			}
+
+			// Check item sound
+			InventoryItem inventoryItem = player.GetSelectedItem ();
+			if (inventoryItem != InventoryItem.Null) {
+				ItemDefinition currentItem = inventoryItem.item;
+				PlayCustomSound (currentItem.useSound);
+			}
+
 			env.RayHit (ray, damage, player.hitRange, player.hitDamageRadius);
 		}
 
 
-		void DoBuild () {
-			if (player.selectedItemIndex < 0 || player.selectedItemIndex >= player.items.Count)
-				return;
-
-			InventoryItem inventoryItem = player.GetSelectedItem ();
-			ItemDefinition currentItem = inventoryItem.item;
-			switch (currentItem.category) {
-			case ItemCategory.Voxel:
-				
-				// Basic placement rules
-				bool canPlace = crosshairOnBlock;
-				Voxel existingVoxel = crosshairHitInfo.voxel;
-				VoxelDefinition existingVoxelType = existingVoxel.type;
-				Vector3 placePos;
-				if (currentItem.voxelType.renderType == RenderType.Water && !canPlace) {
-					canPlace = true; // water can be poured anywhere
-					placePos = m_Camera.transform.position + m_Camera.transform.forward * 3f;
-				} else {
-					placePos = crosshairHitInfo.voxelCenter + crosshairHitInfo.normal;
-					if (canPlace && crosshairHitInfo.normal.y == 1) {
-						// Make sure there's a valid voxel under position (ie. do not build a voxel on top of grass)
-						canPlace = (existingVoxelType != null && existingVoxelType.renderType != RenderType.CutoutCross && (existingVoxelType.renderType != RenderType.Water || currentItem.voxelType.renderType == RenderType.Water));
-					}
-				}
-				VoxelDefinition placeVoxelType = currentItem.voxelType;
-
-				// Check voxel promotion
-				bool isPromoting = false;
-				if (canPlace) {
-					if (existingVoxelType == currentItem.voxelType) {
-						if (existingVoxelType.promotesTo != null) {
-							// Promote existing voxel
-							env.VoxelDestroy (crosshairHitInfo.voxelCenter);
-							placePos = crosshairHitInfo.voxelCenter;
-							placeVoxelType = existingVoxelType.promotesTo;
-							isPromoting = true;
-						} else if (crosshairHitInfo.normal.y > 0 && existingVoxelType.biomeDirtCounterpart != null) {
-							env.VoxelPlace (crosshairHitInfo.voxelCenter, existingVoxelType.biomeDirtCounterpart);
-						}
-					}
-				}
-
-				// Compute rotation
-				int textureRotation = 0;
-				if (placeVoxelType.placeFacingPlayer && placeVoxelType.renderType.supportsTextureRotation ()) {
-					// Orient voxel to player
-					Vector3 dir = m_Camera.transform.forward;
-					if (Mathf.Abs (dir.x) > Mathf.Abs (dir.z)) {
-						if (dir.x > 0) {
-							textureRotation = 1;
-						} else {
-							textureRotation = 3;
-						}
-					} else if (dir.z < 0) {
-						textureRotation = 2;
-					}
-				}
-
-				// Final check, does it overlap existing geometry?
-				if (canPlace && !isPromoting) {
-					Quaternion rotationQ = Quaternion.Euler (0, Voxel.GetTextureRotationDegrees (textureRotation), 0);
-					canPlace = !env.VoxelOverlaps (placePos, placeVoxelType, rotationQ, 1 << env.layerVoxels);
-					if (!canPlace) {
-						PlayCancelSound ();
-					}
-				}
-#if UNITY_EDITOR
-                else if (env.constructorMode) {
-					placePos = voxelHighlightBuilder.transform.position;
-					placeVoxelType = currentItem.voxelType;
-					canPlace = true;
-				}
-#endif
-				// Finally place the voxel
-				if (canPlace) {
-					// Consume item first
-					if (!env.buildMode) {
-						player.ConsumeItem ();
-					}
-					// Place it
-					float amount = inventoryItem.quantity < 1f ? inventoryItem.quantity : 1f;
-					env.VoxelPlace (placePos, placeVoxelType, true, placeVoxelType.tintColor, amount, textureRotation);
-
-					// Moves back character controller if voxel is put just on its position
-					const float minDist = 0.5f;
-					float distSqr = Vector3.SqrMagnitude (m_Camera.transform.position - placePos);
-					if (distSqr < minDist * minDist) {
-						m_CharacterController.transform.position += crosshairHitInfo.normal;
-					}
-
-				}
-				break;
-			case ItemCategory.Torch:
-				if (crosshairOnBlock) {
-					GameObject torchAttached = env.TorchAttach (crosshairHitInfo);
-					if (!env.buildMode && torchAttached != null) {
-						player.ConsumeItem ();
-					}
-				}
-				break;
-			}
-		}
+	
 
 		private void FixedUpdate () {
+
+			if (!hasCharacterController)
+				return;
+			
 			float speed;
 			GetInput (out speed);
 
 			Vector3 pos = transform.position;
-			if (!m_Jumping && (isFlying || isInWater)) {
+			if (isFlying || isInWater) {
 				m_MoveDir = m_Camera.transform.forward * m_Input.y + m_Camera.transform.right * m_Input.x + m_Camera.transform.up * m_Input.z;
 				m_MoveDir *= speed;
 				if (!isFlying) {
@@ -536,7 +544,7 @@ namespace VoxelPlay {
 				// get a normal for the surface that is being touched to move along it
 				RaycastHit hitInfo;
 				Physics.SphereCast (pos, m_CharacterController.radius, Misc.vector3down, out hitInfo,
-					m_CharacterController.height / 2f, Physics.AllLayers, QueryTriggerInteraction.Ignore);
+					characterHeight / 2f, Physics.AllLayers, QueryTriggerInteraction.Ignore);
 				desiredMove = Vector3.ProjectOnPlane (desiredMove, hitInfo.normal).normalized;
 
 				m_MoveDir.x = desiredMove.x * speed;
@@ -587,7 +595,7 @@ namespace VoxelPlay {
 			if (canMove) {
 				// autoclimb
 				Vector3 dir = new Vector3 (m_MoveDir.x, 0, m_MoveDir.z);
-				Vector3 basePos = new Vector3 (pos.x, pos.y - m_CharacterController.height * 0.25f, pos.z);
+				Vector3 basePos = new Vector3 (pos.x, pos.y - characterHeight * 0.25f, pos.z);
 				Ray ray = new Ray (basePos, dir);
 				if (Physics.SphereCast (ray, 0.3f, 1f)) {
 					m_CharacterController.stepOffset = 1.1f;
@@ -615,8 +623,6 @@ namespace VoxelPlay {
 					return;
 				}
 			}
-
-
 		}
 
 
@@ -727,22 +733,17 @@ namespace VoxelPlay {
 				if (toSurface) {
 					minAltitude = Mathf.Max (env.GetTerrainHeight (transform.position), minAltitude);
 				}
-				transform.position = new Vector3 (transform.position.x, minAltitude + m_CharacterController.height * 0.5f, transform.position.z);
+				transform.position = new Vector3 (transform.position.x, minAltitude + characterHeight * 0.5f, transform.position.z);
 			}
 		}
 
 		/// <summary>
-		/// Removes an unit fcrom current item in player inventory and throws it into the scene
+		/// Moves character controller to a new position. Use this method instead of changing the transform position
 		/// </summary>
-		public void ThrowCurrentItem () {
-			InventoryItem inventoryItem = player.ConsumeItem ();
-			if (inventoryItem == InventoryItem.Null)
-				return;
-
-			if (inventoryItem.item.category != ItemCategory.Voxel)
-				return;
-
-			env.VoxelThrow (m_Camera.transform.position, m_Camera.transform.forward, 15f, inventoryItem.item.voxelType, Misc.color32White);
+		public override void MoveTo (Vector3 newPosition) {
+			m_CharacterController.enabled = false;
+			transform.position = newPosition;
+			m_CharacterController.enabled = true;
 		}
 
 	}

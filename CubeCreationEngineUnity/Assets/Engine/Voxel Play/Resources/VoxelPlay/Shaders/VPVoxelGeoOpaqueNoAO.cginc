@@ -27,6 +27,8 @@ void vert (inout appdata v) {
 }
 
 
+float3 worldCenter;
+
 inline void PushCorner(inout g2f i, inout TriangleStream<g2f>o, float3 center, float3 corner, float3 uv) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
@@ -46,7 +48,7 @@ void PushVoxelNoAO(float3 center, float4 uv, fixed3 color, inout TriangleStream<
 void PushVoxelNoAO(float3 center, float4 uv, inout TriangleStream<g2f> o) {
 #endif
 	// cube vertices
-	float3 worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
+	worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
 	float3 viewDir     = _WorldSpaceCameraPos - worldCenter;
 	float3 normal      = sign(viewDir);
 	float3 viewSide    = saturate(normal);
@@ -128,7 +130,7 @@ fixed4 frag (g2f i) : SV_Target {
 
 	VOXELPLAY_APPLY_LIGHTING(color, i);
 
-	VOXELPLAY_APPLY_FOG(color, i); // <-- disabled fog on clouds to let them appear on longer distances
+//	VOXELPLAY_APPLY_FOG(color, i); // <-- disabled fog on clouds to let them appear on longer distances
 
 	return color;
 }

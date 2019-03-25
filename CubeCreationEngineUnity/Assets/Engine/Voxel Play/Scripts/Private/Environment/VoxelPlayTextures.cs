@@ -16,6 +16,16 @@ namespace VoxelPlay {
 			public Color32[] normalsAndElevation;
 		}
 
+		static long[] distinctColors = new long[] { 
+			0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF, 0x000000, 
+			0x800000, 0x008000, 0x000080, 0x808000, 0x800080, 0x008080, 0x808080, 
+			0xC00000, 0x00C000, 0x0000C0, 0xC0C000, 0xC000C0, 0x00C0C0, 0xC0C0C0, 
+			0x400000, 0x004000, 0x000040, 0x404000, 0x400040, 0x004040, 0x404040, 
+			0x200000, 0x002000, 0x000020, 0x202000, 0x200020, 0x002020, 0x202020, 
+			0x600000, 0x006000, 0x000060, 0x606000, 0x600060, 0x006060, 0x606060, 
+			0xA00000, 0x00A000, 0x0000A0, 0xA0A000, 0xA000A0, 0x00A0A0, 0xA0A0A0, 
+			0xE00000, 0x00E000, 0x0000E0, 0xE0E000, 0xE000E0, 0x00E0E0, 0xE0E0E0 
+		};
 
 		/// <summary>
 		/// List containing all world textures availables
@@ -42,7 +52,7 @@ namespace VoxelPlay {
 		/// </summary>
 		List<VoxelDefinition> sessionUserVoxels;
 
-		Color32[] defaultMapColors;
+		Color32[] defaultMapColors, defaultPinkColors;
 
 		void AddVoxelTextures (VoxelDefinition vd) {
 
@@ -62,22 +72,39 @@ namespace VoxelPlay {
 			}
 
 			voxelDefinitions [voxelDefinitionsCount] = vd;
-			vd.index = (short)voxelDefinitionsCount;
+			vd.index = (ushort)voxelDefinitionsCount;
 			voxelDefinitionsCount++;
 			voxelDefinitionsDict [vd.name] = vd;
 
 			// Autofix certain non supported properties
-			if (vd.navigatable) vd.navigatable = vd.renderType.supportsNavigation();
+			if (vd.navigatable) {
+				vd.navigatable = vd.renderType.supportsNavigation ();
+			}
 
 			// Check if custom model has collider
 			vd.modelUsesCollider = false;
-			if (vd.renderType == RenderType.Custom && vd.model!=null) {
-				if (vd.gpuInstancing) {
-					if (vd.createGameObject) {
+			if (vd.renderType == RenderType.Custom) {
+				if (vd.model == null) {
+					// custom voxel is missing model so we assign a default cube
+					vd.model = GetDefaultVoxelPrefab ();
+					vd.opaque = 15;
+				}
+				if (vd.model != null) {
+					// annotate if model has collider
+					if (vd.gpuInstancing) {
+						if (vd.createGameObject) {
+							vd.modelUsesCollider = vd.model.GetComponent<Collider> () != null;
+						}
+					} else {
 						vd.modelUsesCollider = vd.model.GetComponent<Collider> () != null;
 					}
-				} else {
-					vd.modelUsesCollider = vd.model.GetComponent<Collider> () != null;
+				}
+				if (vd.textureSide == null) {
+					// assign default texture sample for inventory icons
+					Material modelMaterial = vd.material;
+					if (modelMaterial != null && modelMaterial.mainTexture != null && modelMaterial.mainTexture is Texture2D) {
+						vd.icon = (Texture2D)modelMaterial.mainTexture;
+					}
 				}
 			}
 
@@ -134,10 +161,15 @@ namespace VoxelPlay {
 
 			if (vd.renderType == RenderType.CutoutCross && vd.sampleColor.a == 0) {
 				AnalyzeGrassTexture (vd, vd.textureSide);
+			} else {
+				if (vd.textureIndexSide > 0) {
+					Color32[] colors = worldTextures [vd.textureIndexSide].colorsAndEmission;
+					vd.sampleColor = colors [Random.Range (0, colors.Length)];
+				}
 			}
 
 			GetVoxelThumbnails (vd);
-        }
+		}
 
 		/// <summary>
 		/// Returns the index in the texture list and the full index (index in the list + some flags specifying existence of normal/displacement maps)
@@ -168,8 +200,11 @@ namespace VoxelPlay {
 		}
 
 
-		Color32[] CombineAlbedoAndEmission (Texture2D albedoMap, Texture2D emissionMap) {
+		Color32[] CombineAlbedoAndEmission (Texture2D albedoMap, Texture2D emissionMap = null) {
 			Color32[] mapColors;
+			if (albedoMap == null) {
+				return GetPinkColors ();
+			}
 			if (albedoMap.width != textureSize) {
 				albedoMap = Instantiate (albedoMap) as Texture2D;
 				albedoMap.hideFlags = HideFlags.DontSave;
@@ -232,6 +267,17 @@ namespace VoxelPlay {
 			return normalMapColors;
 		}
 
+		Color32[] GetPinkColors () {
+			int len = textureSize * textureSize;
+			if (defaultPinkColors != null && defaultPinkColors.Length == len) {
+				return defaultPinkColors;
+			}
+			defaultPinkColors = new Color32[len];
+			Color32 color = new Color32 (255, 0, 0x80, 255);
+			defaultPinkColors.Fill<Color32> (color);
+			return defaultPinkColors;
+		}
+
 		Color32[] GetDefaultMapColors () {
 			int len = textureSize * textureSize;
 			if (defaultMapColors != null && defaultMapColors.Length == len) {
@@ -244,13 +290,12 @@ namespace VoxelPlay {
 		}
 
 		void AnalyzeGrassTexture (VoxelDefinition vd, Texture2D tex) {
-            if (tex==null)
-            {
-                Debug.Log("AnalyzeGrassTexture: texture not found for " + vd.name);
-                return;
-            }
-            // get sample color (random pixel from texture raw data)
-            Color[] colors = tex.GetPixels ();
+			if (tex == null) {
+				Debug.Log ("AnalyzeGrassTexture: texture not found for " + vd.name);
+				return;
+			}
+			// get sample color (random pixel from texture raw data)
+			Color[] colors = tex.GetPixels ();
 			int tw = tex.width;
 			int th = tex.height;
 			int pos = 4 * tw + tw * 3 / 4;
@@ -328,7 +373,7 @@ namespace VoxelPlay {
 				// Voxel Definitions no longer are added to the dictionary, clear the index field.
 				for (int k = 0; k < voxelDefinitionsCount; k++) {
 					if (voxelDefinitions [k] != null) {
-						voxelDefinitions [k].index = 0;
+						voxelDefinitions [k].Reset ();
 					}
 				}
 			} else {
@@ -382,6 +427,13 @@ namespace VoxelPlay {
 					}
 					if (biome.ores != null) {
 						for (int v = 0; v < biome.ores.Length; v++) {
+							// ensure proper size
+							if (biome.ores [v].veinMinSize == biome.ores [v].veinMaxSize && biome.ores [v].veinMaxSize == 0) {
+								biome.ores [v].veinMinSize = 2;
+								biome.ores [v].veinMaxSize = 6;
+								biome.ores [v].veinsCountMin = 1;
+								biome.ores [v].veinsCountMax = 2;
+							}
 							AddVoxelTextures (biome.ores [v].ore);
 						}
 					}
@@ -402,6 +454,18 @@ namespace VoxelPlay {
 				}
 			}
 
+			// Add all items' textures are available
+			if (world.items != null) {
+				int itemCount = world.items.Length;
+				for (int k = 0; k < itemCount; k++) {
+					ItemDefinition item = world.items [k];
+					if (item.category == ItemCategory.Voxel) {
+						AddVoxelTextures (item.voxelType);
+					}
+				}
+			}
+
+
 			// Add any other voxel found inside Defaults
 			VoxelDefinition[] vdd = Resources.LoadAll<VoxelDefinition> ("VoxelPlay/Defaults");
 			for (int k = 0; k < vdd.Length; k++) {
@@ -414,7 +478,7 @@ namespace VoxelPlay {
 				AddVoxelTextures (vdd [k]);
 			}
 
-			// Add any other voxel found inside a resource directory with same name of world
+			// Add any other voxel found inside a resource directory with same name of world (if not placed into Worlds directory)
 			vdd = Resources.LoadAll<VoxelDefinition> (world.name);
 			for (int k = 0; k < vdd.Length; k++) {
 				AddVoxelTextures (vdd [k]);
@@ -487,7 +551,11 @@ namespace VoxelPlay {
 			int textureCount = worldTextures.Count;
 			if (textureCount > 0) {
 				Texture2DArray pointFilterTextureArray = new Texture2DArray (textureSize, textureSize, textureCount, TextureFormat.ARGB32, hqFiltering);
-				pointFilterTextureArray.wrapMode = enableReliefMapping ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
+				if (enableReliefMapping || !enableSmoothLighting) {
+					pointFilterTextureArray.wrapMode = TextureWrapMode.Repeat;
+				} else {
+					pointFilterTextureArray.wrapMode = TextureWrapMode.Clamp;
+				}
 				pointFilterTextureArray.filterMode = hqFiltering ? FilterMode.Bilinear : FilterMode.Point;
 				pointFilterTextureArray.mipMapBias = -mipMapBias;
 				for (int k = 0; k < textureCount; k++) {
@@ -524,6 +592,10 @@ namespace VoxelPlay {
 				if (matTriangleCutout != null) {
 					matTriangleCutout.SetTexture ("_MainTex", pointFilterTextureArray);
 				}
+				if (modelHighlightMat == null) {
+					modelHighlightMat = Instantiate<Material> (Resources.Load<Material> ("VoxelPlay/Materials/VP Highlight Model")) as Material;
+				}
+				modelHighlightMat.SetTexture ("_MainTex", pointFilterTextureArray);
 			}
 		}
 
@@ -532,6 +604,27 @@ namespace VoxelPlay {
 			VoxelDefinition vd;
 			voxelDefinitionsDict.TryGetValue (name, out vd);
 			return vd;
+		}
+
+
+		/// <summary>
+		/// Assigns a color to each biome.
+		/// </summary>
+		public void SetBiomeDefaultColors (bool force) {
+			if (world != null) {
+				if (world.biomes != null) {
+					for (int b = 0; b < world.biomes.Length; b++) {
+						BiomeDefinition biome = world.biomes [b];
+						if (biome == null || biome.zones == null)
+							continue;
+						if (force || biome.biomeMapColor.a == 0) {
+							long color = distinctColors [b % distinctColors.Length];
+							Color32 biomeColor = new Color32 ((byte)(color >> 16), (byte)((color >> 8) & 255), (byte)(color & 255), 255);
+							biome.biomeMapColor = biomeColor;
+						}
+					}
+				}
+			}
 		}
 				
 

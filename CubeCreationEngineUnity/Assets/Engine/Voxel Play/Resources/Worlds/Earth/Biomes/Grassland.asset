@@ -40,3 +40,9 @@ MonoBehaviour:
     probabilityMax: 0.1
     depthMin: 0
     depthMax: 500
+    veinMinSize: 1
+    veinMaxSize: 2
+    veinsCountMin: 1
+    veinsCountMax: 2
+  biomeMapColor: {r: 1, g: 0, b: 0, a: 1}
+  showInBiomeMap: 1

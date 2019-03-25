@@ -1,8 +1,5 @@
 Shader "Voxel Play/Skybox/SkyboxEarth" {
 Properties {
-//	_VPSkyTint ("Sky Tint", Color) = (0.52, 0.5, 1.0)
-//	_VPExposure("Exposure", Range(0, 8)) = 1.3
-//	_VPFogAmount("Fog Amount", Range(0,1)) = 0.5
 	_StarBlockSize ("Star Block Size", Range(100,300)) = 200
 	_StarAmount("Star Amount", Range(0.9,1)) = 0.997
 	_SunFlare("Sun Flare", Range(0, 1.0)) = 0.4
@@ -54,7 +51,7 @@ SubShader {
 			o.pos = UnityObjectToClipPos(v.vertex);
 			o.ray = v.vertex.xyz;
 			o.uv = v.texcoord;
-			o.scrPos = o.pos; // / o.pos.w;
+			o.scrPos = o.pos; 
 			o.lightPos = UnityObjectToClipPos(_WorldSpaceLightPos0.xyz);
 			return o;
 		}
@@ -70,6 +67,7 @@ SubShader {
 		half4 frag (v2f i) : SV_Target
 		{
 			float3 ray    = i.ray;
+
 			float3 delta  = _WorldSpaceLightPos0.xyz - ray;
 			float dist    = dot(delta, delta);
 

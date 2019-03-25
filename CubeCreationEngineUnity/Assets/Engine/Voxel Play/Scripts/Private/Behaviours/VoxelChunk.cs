@@ -64,6 +64,11 @@ namespace VoxelPlay {
 		[NonSerialized, HideInInspector] public bool needsColliderRebuild;
 
 		/// <summary>
+		/// A flag that specifies that the chunk lightmap needs to be rebuilt when it gets refreshed
+		/// </summary>
+		[NonSerialized, HideInInspector] public bool needsLightmapRebuild;
+
+		/// <summary>
 		/// A flag that specifies that the chunk to be rendered will ignore frustum (ie. can be a chunk required by a distant AI)
 		/// </summary>
 		[NonSerialized, HideInInspector] public bool ignoreFrustum;
@@ -102,22 +107,33 @@ namespace VoxelPlay {
 		[NonSerialized, HideInInspector]
 		public byte inconclusiveNeighbours;
 
-
 		/// <summary>
 		/// The frame number where this chunk is rendered. Used for optimization.
 		/// </summary>
 		[NonSerialized, HideInInspector]
 		public int renderingFrame;
 
-
+		/// <summary>
+		/// Light sources in this chunk (ie. torches)
+		/// </summary>
 		[NonSerialized]
 		public List<LightSource> lightSources;
 
-
+		/// <summary>
+		/// Voxel placeholders in this chunk. A placeholder is used to provide additional visual or interaction to a specific voxel (ie. damage cracks, physics, ...)
+		/// </summary>
 		[NonSerialized]
 		public List<VoxelPlaceholder> placeholders;
 
+		/// <summary>
+		/// Items spawn in this chunk
+		/// </summary>
+		[NonSerialized]
+		public FastList<Item> items;
+
+
 		VoxelChunk _top;
+
 		public VoxelChunk top {
 			get {
 				if (_top == null) {
@@ -133,6 +149,7 @@ namespace VoxelPlay {
 		}
 
 		VoxelChunk _bottom;
+
 		public VoxelChunk bottom {
 			get {
 				if (_bottom == null) {
@@ -148,6 +165,7 @@ namespace VoxelPlay {
 		}
 
 		VoxelChunk _left;
+
 		public VoxelChunk left {
 			get {
 				if (_left == null) {
@@ -164,6 +182,7 @@ namespace VoxelPlay {
 		}
 
 		VoxelChunk _right;
+
 		public VoxelChunk right {
 			get {
 				if (_right == null) {
@@ -180,6 +199,7 @@ namespace VoxelPlay {
 		}
 
 		VoxelChunk _forward;
+
 		public VoxelChunk forward {
 			get {
 				if (_forward == null) {
@@ -196,6 +216,7 @@ namespace VoxelPlay {
 		}
 
 		VoxelChunk _back;
+
 		public VoxelChunk back {
 			get {
 				if (_back == null) {
@@ -211,13 +232,21 @@ namespace VoxelPlay {
 
 		}
 
+
+		[NonSerialized, HideInInspector]
+		public bool lightmapIsClear;
+
+
 		/// <summary>
 		/// Clears the lightmap of this chunk or initializes it with a value
 		/// </summary>
 		public void ClearLightmap (byte value = 0) {
+			if (lightmapIsClear && voxels [0].light == value)
+				return;
 			for (int k = 0; k < voxels.Length; k++) {
 				voxels [k].light = value;
 			}
+			lightmapIsClear = true;
 		}
 
 		/// <summary>
@@ -247,14 +276,13 @@ namespace VoxelPlay {
 		}
 
 		/// <summary>
-		/// Returns true if this voxel contains a given position in world space
+		/// Returns true if this chunk contains a given position in world space
 		/// </summary>
-		/// <param name="position">Position.</param>
 		public bool Contains (Vector3 position) {
-			Vector3 min = mr.bounds.min;
-			Vector3 max = mr.bounds.max;
-			// check internal bound, non-inclusive
-			return position.x > min.x && position.x < max.x && position.y > min.y && position.y < max.y && position.z > min.z && position.z < max.z;
+			float xDiff = position.x - this.position.x;
+			float yDiff = position.y - this.position.y;
+			float zDiff = position.z - this.position.z;
+			return (xDiff <= 7 && xDiff >= -8 && yDiff <= 7 && yDiff >= -8 && zDiff <= 7 && zDiff >= -8);
 		}
 
 
@@ -275,6 +303,32 @@ namespace VoxelPlay {
 			navMeshSourceIndex = -1;
 			inconclusiveNeighbours = 0;
 			renderingFrame = -1;
+
+			if (lightSources != null) {
+				lightSources.Clear ();
+			}
+
+			if (placeholders != null) {
+				int count = placeholders.Count;
+				for (int k = 0; k < count; k++) {
+					VoxelPlaceholder placeholder = placeholders [k];
+					if (placeholder != null && placeholder.gameObject != null) {
+						DestroyImmediate (placeholder.gameObject);
+					}
+				}
+				placeholders.Clear ();
+			}
+
+			if (items != null) {
+				for (int k = 0; k < items.count; k++) {
+					Item item = items.values [k];
+					if (item != null && item.gameObject != null) {
+						DestroyImmediate (item.gameObject);
+					}
+				}
+				items.Clear ();
+			}
+
 
 			if (_left != null) {
 				_left.right = null;
@@ -307,11 +361,29 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Marks this chunk as inconclusive which means some neighbour may need to be rendered again due some special changes in this chunk (eg. drawing holes on this chunk edges)
 		/// </summary>
-		public void MarkAsInconclusive() {
-			inconclusiveNeighbours |= 128;
-
+		public void MarkAsInconclusive (int neighbourFlags = 128) {
+			inconclusiveNeighbours = (byte)(inconclusiveNeighbours | neighbourFlags);
 		}
 
+		public void RemoveItem (Item item) {
+			if (items != null) {
+				if (items.Remove (item)) {
+					modified = true;
+				}
+			}
+		}
+
+		public void AddItem (Item item) {
+			if (items == null) {
+				items = new FastList<Item> ();
+			}
+			items.Add (item);
+			modified = true;
+		}
+
+		public override string ToString () {
+			return string.Format ("[VoxelChunk: x={0}, y={1}, zm={2}]", position.x, position.y, position.z);
+		}
 
 	}
 

@@ -14,6 +14,7 @@ MonoBehaviour:
   seed: 0
   biomes:
   - {fileID: 11400000, guid: b3dda5f94f82e48de8e056209e1872db, type: 2}
+  defaultBiome: {fileID: 0}
   terrainGenerator: {fileID: 11400000, guid: 2faffc4d4fc214e42875dbf64b8f7db2, type: 2}
   bedrockVoxel: {fileID: 11400000, guid: 62e537e35412d45a799ca5f5da92f457, type: 2}
   detailGenerators: []
@@ -30,6 +31,8 @@ MonoBehaviour:
   cloudCoverage: 110
   cloudAltitude: 150
   skyTint: {r: 0.52, g: 0.5, b: 1, a: 1}
+  lightScattering: 1
+  lightIntensityMultiplier: 1
   emissionAnimationSpeed: 0.5
   emissionMinIntensity: 0.5
   emissionMaxIntensity: 1.2
@@ -54,3 +57,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f2e9a490315cc4c3f87f51bf2f7b7405, type: 2}
   items:
   - {fileID: 11400000, guid: 5becc8720cff94ce6afda3f0ae711b81, type: 2}
+  tileRuleSets:
+  - {fileID: 11400000, guid: 5c0a3f8f486ae4af8a8a388549114cad, type: 2}

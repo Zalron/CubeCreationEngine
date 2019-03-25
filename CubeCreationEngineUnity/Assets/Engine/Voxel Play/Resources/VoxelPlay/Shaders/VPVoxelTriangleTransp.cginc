@@ -24,6 +24,8 @@ struct vertexInfo {
 v2f vert (appdata v) {
 	v2f o;
 	float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldPos)
+
 	float4 uv = v.uv;
 
 	o.pos    = UnityObjectToClipPos(v.vertex);
@@ -44,13 +46,11 @@ fixed4 frag (v2f i) : SV_Target {
 
 	fixed4 color   = VOXELPLAY_GET_TEXEL_DD(i.uv.xyz);
 
-	#if defined(SHINING)
+	#if VOXELPLAY_TRANSP_BLING
 	color.ba += (1.0 - color.a) * 0.1 * (frac(_Time.x)>0.99) * (frac(_Time.y + (i.uv.x + i.uv.y) * 0.1) > 0.9);
 	#endif
 
 	VOXELPLAY_APPLY_TINTCOLOR(color, i);
-
-	VOXELPLAY_APPLY_OUTLINE(color, i);
 
 	VOXELPLAY_APPLY_LIGHTING_AND_GI(color, i);
 

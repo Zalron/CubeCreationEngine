@@ -15,7 +15,7 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Used to initialize any data structure or reload
 		/// </summary>
-		public override void Init () {
+		protected override void Init () {
 			if (terrainVoxel == null)
 				terrainVoxel = VoxelPlayEnvironment.instance.defaultVoxel;
 		}

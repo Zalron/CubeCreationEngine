@@ -16,6 +16,7 @@ namespace VoxelPlay {
 
 
 	[CreateAssetMenu (menuName = "Voxel Play/World Definition", fileName = "WorldDefinition", order = 103)]
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000001884-world-definition-fields")]
 	public partial class WorldDefinition : ScriptableObject {
 
 		public int seed;
@@ -59,7 +60,7 @@ namespace VoxelPlay {
 		[Range (0, 255)]
 		public int cloudCoverage = 110;
 
-		[Range (0, 255)]
+		[Range (0, 1024)]
 		public int cloudAltitude = 150;
 
 		public Color skyTint = new Color (0.52f, 0.5f, 1f);
@@ -90,6 +91,10 @@ namespace VoxelPlay {
 		[Header ("Additional Objects")]
 		public VoxelDefinition[] moreVoxels;
 		public ItemDefinition[] items;
+
+		// TODO: TILE RULES ARE UNDER DEVELOPMENT
+		[HideInInspector, Header("Tile Rules")]
+		public TileRuleSet[] tileRuleSets;
 
 	}
 

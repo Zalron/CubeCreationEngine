@@ -314,7 +314,7 @@ namespace VoxelPlay {
 			doorVoxel.renderType = RenderType.Custom;
 			doorVoxel.model = doorPrefab;
 			doorVoxel.name = "Voxel" + doorPrefab.name;
-			doorVoxel.textureSide = icon;
+			doorVoxel.icon = icon;
 
 			if (offsetOption == CubeVertexOffsetOption.DoorOpensToTheRight) {
 				doorVoxel.offset = new Vector3 (scale.x * 0.5f - scale.z * 0.5f, -0.5f, 0);

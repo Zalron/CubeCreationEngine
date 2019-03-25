@@ -30,5 +30,11 @@ MonoBehaviour:
   - ore: {fileID: 11400000, guid: 0a7701ce598c04d908cab9a8ebf0e708, type: 2}
     probabilityMin: 0
     probabilityMax: 0.2
-    depthMin: 25
+    depthMin: 10
     depthMax: 500
+    veinMinSize: 4
+    veinMaxSize: 8
+    veinsCountMin: 1
+    veinsCountMax: 2
+  biomeMapColor: {r: 1, g: 0, b: 1, a: 1}
+  showInBiomeMap: 1

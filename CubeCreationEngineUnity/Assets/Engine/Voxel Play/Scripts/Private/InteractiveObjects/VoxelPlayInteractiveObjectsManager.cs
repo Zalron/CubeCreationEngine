@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 
 namespace VoxelPlay {
 
-
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000049602-interactive-objects")]
 	public partial class VoxelPlayInteractiveObjectsManager : MonoBehaviour {
 
 		static VoxelPlayInteractiveObjectsManager _instance;

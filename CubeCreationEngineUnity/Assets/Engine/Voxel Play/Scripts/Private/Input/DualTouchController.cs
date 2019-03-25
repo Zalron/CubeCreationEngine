@@ -83,22 +83,22 @@ namespace VoxelPlay
 				if (t.phase == TouchPhase.Began) {
 					dragged = false;
 					if (buttonBuildRect.Contains (t.position)) {
-						buttons [(int)InputButtonNames.Button2] = InputButtonState.Down;
+						buttons [(int)InputButtonNames.Button2].pressState = InputButtonPressState.Down;
 						return;
 					}
 					if (buttonJumpRect.Contains (t.position)) {
-						buttons [(int)InputButtonNames.Jump] = InputButtonState.Down;
+						buttons [(int)InputButtonNames.Jump].pressState = InputButtonPressState.Down;
 						return;
 					}
 					if (buttonCrouchRect.Contains (t.position)) {
-						buttons [(int)InputButtonNames.Crouch] = InputButtonState.Down;
+						buttons [(int)InputButtonNames.Crouch].pressState = InputButtonPressState.Down;
 						return;
 					}
 					if (buttonInventoryRect.Contains (t.position)) {
-						buttons [(int)InputButtonNames.Inventory] = InputButtonState.Down;
+						buttons [(int)InputButtonNames.Inventory].pressState = InputButtonPressState.Down;
 						return;
 					}
-					buttons [(int)InputButtonNames.Button1] = InputButtonState.Down;
+					buttons [(int)InputButtonNames.Button1].pressState = InputButtonPressState.Down;
 					pressTime = Time.time;
 					pressingFire = (Time.time - liftTime) < 0.3f;
 				} else if (t.phase == TouchPhase.Moved) {
@@ -132,14 +132,14 @@ namespace VoxelPlay
 					mouseX = mouseY = 0;
 					pressingFire = false;
 					if (!dragged && Time.time - pressTime < 0.3f) {
-						buttons [(int)InputButtonNames.Button1] = InputButtonState.Pressed;
+						buttons [(int)InputButtonNames.Button1].pressState = InputButtonPressState.Pressed;
 						liftTime = Time.time;
 					}
 				} else {
 					dragged = false;
 				}
 				if (pressingFire) {
-					buttons [(int)InputButtonNames.Button1] = InputButtonState.Pressed;
+					buttons [(int)InputButtonNames.Button1].pressState = InputButtonPressState.Pressed;
 				}
 
 			}

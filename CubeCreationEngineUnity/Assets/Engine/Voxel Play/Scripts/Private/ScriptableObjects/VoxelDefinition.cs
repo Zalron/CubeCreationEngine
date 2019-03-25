@@ -53,12 +53,17 @@ namespace VoxelPlay {
 
 
 	[CreateAssetMenu (menuName = "Voxel Play/Voxel Definition", fileName = "VoxelDefinition", order = 101)]
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000001917-voxels-and-voxel-definitions")]
 	public partial class VoxelDefinition : ScriptableObject {
 
 		[Tooltip ("Name to show in the UI")]
 		public string title;
 
 		public RenderType renderType = RenderType.Opaque;
+
+		[Tooltip("Set this value to 15 to specify that this is a fully solid object that occludes other adjacent voxels.")]
+		[Range(0,15)]
+		public byte opaque;
 
 		[Tooltip ("Texture of the voxel Top side")]
 		public Texture2D textureTop;
@@ -159,6 +164,9 @@ namespace VoxelPlay {
 		[Tooltip ("The item dropped when this voxel is destroyed. If null, a default item of the same voxel type will be used.")]
 		public ItemDefinition dropItem;
 
+		[Tooltip("Texture used for the inventory panel. If omitted, it will use the side texture.")]
+		public Texture2D icon;
+
 		[Tooltip ("If this voxel type can be included in NavMesh navigation. All opaque voxels are by default included in any generated NavMesh but you can exclude this voxel type by setting this property to false.")]
 		public bool navigatable = true;
 
@@ -246,13 +254,11 @@ namespace VoxelPlay {
 		[Tooltip ("If walking over this voxel raises a OnVoxelWalk event by FPS controllers.")]
 		public bool triggerWalkEvent;
 
-
-
+		public bool showFoam = true;
 
 		/// <summary>
 		/// Temporary/session-related data
 		/// </summary>
-
 		[HideInInspector, NonSerialized]
 		public int textureIndexSide, textureIndexTop, textureIndexBottom;
 
@@ -262,7 +268,7 @@ namespace VoxelPlay {
 
 		// index in voxelDefinitions list when it's added
 		[NonSerialized]
-		public short index;
+		public ushort index;
 
 		// The related dynamic voxel definition. This field is only set when a static voxel is converted to dynamic (only set once per type)
 		[NonSerialized]
@@ -338,6 +344,30 @@ namespace VoxelPlay {
 				shiftedOffset += WorldRand.GetVector3 (position, offsetRandomRange, -0.5f);
 			}
 			return shiftedOffset;
+		}
+
+
+		/// <summary>
+		/// The texture used for the inventory
+		/// </summary>
+		/// <value>The icon.</value>
+		public Texture2D GetIcon() {
+			if (icon != null)
+				return icon;
+			if (textureThumbnailSide != null) {
+				return textureThumbnailSide;
+			}
+			return textureSide;
+		}
+
+		/// <summary>
+		/// Clears temporary/session non-serializable fields
+		/// </summary>
+		public void Reset() {
+			index = 0;
+			dynamicDefinition = null;
+			dynamicMeshes = null;
+			batchedIndex = -1;
 		}
 
 	}

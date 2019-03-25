@@ -31,7 +31,7 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Resets any cached data and reload info
 		/// </summary>
-		public abstract void Init ();
+		protected abstract void Init ();
 
 		/// <summary>
 		/// Gets the altitude and moisture.
@@ -49,7 +49,15 @@ namespace VoxelPlay {
 		/// <param name="position">Central position of the chunk.</param>
 		public abstract bool PaintChunk (VoxelChunk chunk);
 
+		/// <summary>
+		/// Returns true if the terrain generator is ready to be used. Call Initialize() otherwise.
+		/// </summary>
+		[NonSerialized]
+		public bool isInitialized;
 
+		/// <summary>
+		/// Use this method to initialize the terrain generator
+		/// </summary>
 		public void Initialize () {
 			env = VoxelPlayEnvironment.instance;
 			if (env == null)
@@ -59,6 +67,7 @@ namespace VoxelPlay {
 				return;
 			env.waterLevel = (int)(seaLevel * maxHeight);
 			Init ();
+			isInitialized = true;
 		}
 
 	}

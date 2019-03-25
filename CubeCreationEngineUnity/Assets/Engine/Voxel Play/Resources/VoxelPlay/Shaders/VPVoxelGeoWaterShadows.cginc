@@ -21,9 +21,12 @@ void vert (inout appdata v) {
 }
 
 
+float3 worldCenter;
+
 inline void PushCorner(inout TriangleStream<g2f>o, float3 center, float3 corner) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldCenter + corner)
 	g2f i;
 	TRANSFER_SHADOW_CASTER(i);
 	o.Append(i);
@@ -32,7 +35,7 @@ inline void PushCorner(inout TriangleStream<g2f>o, float3 center, float3 corner)
 
 void PushVoxel(float3 center, int4 occi, inout TriangleStream<g2f> o) {
 	// cube vertices
-	float3 worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
+	worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
 	float3 viewDir     = _WorldSpaceCameraPos - worldCenter;
 	float3 normal      = sign(viewDir);
 	float3 viewSide    = saturate(normal);

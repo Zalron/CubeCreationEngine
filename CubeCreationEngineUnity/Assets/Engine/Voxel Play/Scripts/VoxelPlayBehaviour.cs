@@ -9,6 +9,7 @@ using System.Collections;
 
 namespace VoxelPlay {
 				
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000001858-voxel-play-behaviour")]
 	public class VoxelPlayBehaviour : MonoBehaviour {
 
 		public bool enableVoxelLight = true;
@@ -58,6 +59,10 @@ namespace VoxelPlay {
 		}
 
 		void LateUpdate() {
+
+			if (!env.initialized)
+				return;
+
 			// Check if position has changed since previous
 			Vector3 position = transform.position;
 

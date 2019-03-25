@@ -33,6 +33,7 @@ float3 worldCenter, norm;
 inline void PushCorner(inout g2f i, inout TriangleStream<g2f>o, float3 center, float3 corner, float4 uv) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldCenter + corner)
 	i.pos    = UnityObjectToClipPos(v.vertex);
 	i.uv     = uv;
 	VOXELPLAY_SET_VERTEX_LIGHT(i, worldCenter + corner, norm)
@@ -198,13 +199,11 @@ fixed4 frag (g2f i) : SV_Target {
 	// Diffuse
 	fixed4 color   = VOXELPLAY_GET_TEXEL_GEO(i.uv.xyz);
 
-	#if defined(SHINING)
+	#if VOXELPLAY_TRANSP_BLING
 	color.ba += (1.0 - color.a) * 0.1 * (frac(_Time.y * 0.2)>0.9) * (frac(_Time.y + (i.uv.x + i.uv.y) * 0.1) > 0.9);
 	#endif
 
 	VOXELPLAY_APPLY_TINTCOLOR(color, i);
-
-	VOXELPLAY_APPLY_OUTLINE(color, i);
 
 	VOXELPLAY_APPLY_LIGHTING_AND_GI(color, i);
 

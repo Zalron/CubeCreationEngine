@@ -46,6 +46,74 @@ Version history
 ---------------
 
 Current version
+- New curvature effect (enable it on Voxel Play Environment inspector; details: https://kronnect.freshdesk.com/solution/articles/42000055254-shaders)
+- Improvements to model placement (visualization, player facing)
+- Reduced vegetation & leaves halo artifacts
+
+3.5
+- New feature: model definitions can be part of inventory and placed like other voxels
+- Added tinting support to cutout voxels
+- Model Definition: added field "buildDuration"
+- API: added overload to ModelPlace which accepts a duration
+- API: new events: OnModelBuildStart / OnModelBuildEnd
+- [Fix] Fixed issue when reloading a world containing GPU instanced voxels
+- [Fix] Fixed ground clipping issue with third person controller
+
+3.4.3
+- Added "Transparent Bling" option to Voxel Play Environment
+- [Fix] Fixed lighting issues in big caves/rooms
+
+3.4.2
+- [Fix] Fixed AO not showing correctly
+- [Fix] Fixed tint color on transparent voxels
+
+3.4.1
+- Added "Low Memory Mode" to Voxel Play Environment
+
+3.4
+- Added specular lighting to water shaders
+- Voxel Play First Person Controller can now work without Unity Character Controller providing basic features like crosshair, digging and building
+- Added inspector help links (like Biome Definition, etc) to online documentation
+- Improvements to Third Person Character Controller
+
+3.3
+- Added Initial Wait Time option to Voxel Play Environment (waits for some rendering before player can move)
+- Improved water foam corners
+- New noise viewer & generator tool. Includes tilable Perlin and Cellular generators.
+- Added Show All / Default Colors buttons to biome explorer
+- Character can now enable flying mode while jumping
+- Minor improvements to cave and ore generators
+- [Fix] Fixed issue with entering constructor mode in Unity 2018.3
+
+3.2
+- Reworked ore generation algorithm (faster, more options)
+- New Texture Voxelizer tool: converts a texture into an optimized prefab
+- New Biome Map explorer: open from Voxel Play menu or from Voxel Play Environment inspector
+- Items can now be thrown and picked up
+- Items are now saved as part of the chunk
+- New bare-hand attack properties for player
+- New property bag for item definitions
+- Voxel sword and shovel items added to demo world Earth
+- New Tile Rules Set: define prioritized rules that execute when placing specific voxels to change the final placed voxel. Useful to create connected voxels.
+- Improved performance of GPU instancing and custom voxels
+- New opaque property for custom voxels to occlude adjacent voxels
+- If model is not provided in a custom voxel definition, a default cube is used
+- Improved outline effect when using geometry shaders
+- Added VPModelTextureTriplanar material/shader
+- API: improved performance of Voxel Place
+- API: added OnVoxelBeforePlace event
+- API: changed VoxelChunk.Contains method to avoid dependency on its MeshRenderer component
+- API: added OnChunkUnload event
+- API: GetItemByType renamed to GetItemDefinition
+- API: new ItemThrow / ItemSpawn
+- API: added GetBiome(altitude, moisture)
+- Only Generate in Frustum has been removed. Use Only Render in Frustum.
+- [Fix] To prevent reading issues from textures, the VoxelDefinition inspector now automatically sets Read/Write enabled property to the assigned textures
+- [Fix] Voxels won't collapse when loading a saved game during the same session
+- [Fix] Color defined at material was being replaced by voxel tint color
+- [Fix] Unity terrain voxel converter generated flat terrain in Edit mode
+
+3.1.1
 - [Fix] Skybox shows pitch black in Editor
 - [Fix] Water and shore voxels shows in white when duplicating the world asset
 - [Fix] API: some enums names have been fixed to respect coding style

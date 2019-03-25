@@ -8,9 +8,10 @@ using UnityEngine.Rendering;
 
 namespace VoxelPlay {
 
-	public enum ColliderTypes {
-		OnlyVoxels = 0,
-		AnyCollider = 1
+	public enum ColliderTypes : int {
+		AnyCollider = 0,
+		OnlyVoxels = 1,
+		IgnorePlayer = 2
 	}
 
 
@@ -69,7 +70,7 @@ namespace VoxelPlay {
 		public Vector3 normal;
 
 		/// <summary>
-		/// Convenience property that returns a copy of the voxel hit
+		/// Copy of the voxel hit. This copy does not change even if the position has been cleared after the RayCast finishes. To get the voxel at this position at this moment, call GetVoxelNow()
 		/// </summary>
 		/// <value>The voxel.</value>
 		public Voxel voxel;
@@ -83,6 +84,25 @@ namespace VoxelPlay {
 		/// If the voxel hit has a placeholder attached, a reference to it is returned here
 		/// </summary>
 		public VoxelPlaceholder placeholder;
+
+
+		public void Clear () {
+			placeholder = null;
+			chunk = null;
+			voxelIndex = -1;
+			collider = null;
+		}
+
+		/// <summary>
+		/// Returns a copy of the voxel at this position
+		/// </summary>
+		public Voxel GetVoxelNow() {
+			if (chunk != null && voxelIndex >= 0) {
+				return chunk.voxels [voxelIndex];
+			} else {
+				return Voxel.Empty;
+			}
+		}
 	}
 
 	public partial class VoxelPlayEnvironment : MonoBehaviour {
@@ -164,7 +184,7 @@ namespace VoxelPlay {
 		bool RayCastFast (Vector3 origin, Vector3 direction, out VoxelHitInfo hitInfo, float maxDistance = 0, bool createChunksIfNeeded = false, byte minOpaque = 0, ColliderTypes colliderTypes = ColliderTypes.AnyCollider) {
 
 			bool voxelHit = RayCastFastVoxel (origin, direction, out hitInfo, maxDistance, createChunksIfNeeded, minOpaque);
-			if (colliderTypes == ColliderTypes.OnlyVoxels) {
+			if ( (colliderTypes & ColliderTypes.OnlyVoxels) != 0) {
 				return voxelHit;
 			}
 
@@ -181,6 +201,10 @@ namespace VoxelPlay {
 
 				// Check if gameobject is a dynamic voxel
 				if (hit.collider != null) {
+					if ((colliderTypes & ColliderTypes.IgnorePlayer) != 0 && characterController != null && characterController.name.Equals (hit.collider.name)) {
+						return false;
+					}
+					hitInfo.voxelIndex = -1;
 					VoxelPlaceholder placeholder = hit.collider.GetComponentInParent<VoxelPlaceholder> ();
 					if (placeholder != null) {
 						hitInfo.chunk = placeholder.chunk;
@@ -438,7 +462,7 @@ namespace VoxelPlay {
 
 		bool HitVoxelFast (Vector3 origin, Vector3 direction, int damage, out VoxelHitInfo hitInfo, float maxDistance = 0, int damageRadius = 1, bool addParticles = true, bool playSound = true, bool allowDamageEvent = true) {
 
-			RayCastFast (origin, direction, out hitInfo, maxDistance);
+			RayCastFast (origin, direction, out hitInfo, maxDistance, false, 0, ColliderTypes.IgnorePlayer);
 			VoxelChunk chunk = hitInfo.chunk;
 			if (chunk == null || hitInfo.voxelIndex < 0) {
 				lastHitInfo.chunk = null;
@@ -594,7 +618,7 @@ namespace VoxelPlay {
 						OnVoxelBeforeDropItem (chunk, hitInfo.voxelIndex, out create);
 					}
 					if (create) {
-						CreateRecoverableVoxel (hitInfo.voxelCenter, voxelDefinitions [hitInfo.voxel.typeIndex], hitInfo.voxel.color, voxelLight);
+						CreateRecoverableVoxel (hitInfo.voxelCenter, voxelDefinitions [hitInfo.voxel.typeIndex], hitInfo.voxel.color);
 					}
 				}
 
@@ -631,11 +655,7 @@ namespace VoxelPlay {
 					g.name = DAMAGE_INDICATOR;
 					Transform tDamageIndicator = g.transform;
 					placeholder.damageIndicator = tDamageIndicator.GetComponent<Renderer> ();
-//					if (placeholder.modelInstance != null) {
-//						tDamageIndicator.SetParent (placeholder.modelInstance.transform, false);
-//					} else {
-						tDamageIndicator.SetParent (placeholder.transform, false);
-//					}
+					tDamageIndicator.SetParent (placeholder.transform, false);
 					tDamageIndicator.localPosition = placeholder.bounds.center;
 					tDamageIndicator.localScale = placeholder.bounds.size * 1.001f;
 				}
@@ -648,8 +668,6 @@ namespace VoxelPlay {
 					Material mi = placeholder.damageIndicatorMaterial; // gets a copy of material the first time it's used
 					mi.mainTexture = world.voxelDamageTextures [textureIndex];
 					mi.SetFloat ("_VoxelLight", voxelLight);
-					mi.SetFloat ("_VPAmbientLight", ambientLight);
-					mi.SetFloat ("_VPDaylightShadowAtten", daylightShadowAtten);
 					placeholder.damageIndicator.enabled = true;
 				}
 
@@ -690,8 +708,6 @@ namespace VoxelPlay {
 				instanceMat.mainTextureOffset = new Vector2 (Random.value, Random.value);
 				instanceMat.mainTextureScale = Misc.vector2one * 0.05f;
 				instanceMat.SetFloat ("_VoxelLight", voxelLight);
-				instanceMat.SetFloat ("_VPAmbientLight", ambientLight);
-				instanceMat.SetFloat ("_VPDaylightShadowAtten", daylightShadowAtten);
 				instanceMat.SetFloat ("_FlashDelay", 0);
 
 				// Set position
@@ -757,12 +773,12 @@ namespace VoxelPlay {
 			}
 		}
 
-		GameObject CreateRecoverableVoxel (Vector3 position, VoxelDefinition voxelType, Color32 color, float voxelLight) {
+		GameObject CreateRecoverableVoxel (Vector3 position, VoxelDefinition voxelType, Color32 color) {
 
 			// Set item info
 			ItemDefinition dropItem = voxelType.dropItem;
 			if (dropItem == null) {
-				dropItem = GetItemByType (ItemCategory.Voxel, voxelType);
+				dropItem = GetItemDefinition (ItemCategory.Voxel, voxelType);
 			}
 			if (dropItem == null)
 				return null;
@@ -779,15 +795,15 @@ namespace VoxelPlay {
 
 			// Set position & scale
 			Renderer particleRenderer = particlePool [ppeIndex].renderer;
-			particleRenderer.transform.position = position + Random.insideUnitSphere * 0.25f;
+			Vector3 particlePosition = position + Random.insideUnitSphere * 0.25f;
+			particleRenderer.transform.position = particlePosition;
 			particleRenderer.transform.localScale = new Vector3 (0.25f, 0.25f, 0.25f);
 
-			particlePool [ppeIndex].item.type = dropItem;
+			particlePool [ppeIndex].item.itemDefinition = dropItem;
 			particlePool [ppeIndex].item.canPickUp = true;
 			particlePool [ppeIndex].item.rb = particlePool [ppeIndex].rigidBody;
-			particlePool [ppeIndex].item.resitancePointsLeft = dropItem.resistancePoints;
 			particlePool [ppeIndex].item.creationTime = Time.time;
-			particlePool [ppeIndex].item.quantity = voxelType.renderType == RenderType.Water ? GetVoxel (position, false).GetWaterLevel () / 15f : 1f;
+			particlePool [ppeIndex].item.quantity = voxelType.renderType == RenderType.Water ? GetVoxel (particlePosition, false).GetWaterLevel () / 15f : 1f;
 
 			// Set particle texture
 			Material instanceMat = particleRenderer.sharedMaterial;
@@ -805,9 +821,7 @@ namespace VoxelPlay {
 			}
 			instanceMat.mainTextureOffset = Misc.vector2zero;
 			instanceMat.mainTextureScale = Misc.vector2one;
-			instanceMat.SetFloat ("_VoxelLight", voxelLight);
-			instanceMat.SetFloat ("_VPAmbientLight", ambientLight);
-			instanceMat.SetFloat ("_VPDaylightShadowAtten", daylightShadowAtten);
+			instanceMat.SetFloat ("_VoxelLight", GetVoxelLight (particlePosition));
 			instanceMat.SetFloat ("_FlashDelay", 5f);
 
 			// Self-destruct
@@ -867,7 +881,7 @@ namespace VoxelPlay {
 				particlePool [index].item = particleRenderer.GetComponent<Item> ();
 				particlePool [index].renderer.gameObject.layer = layerParticles;
 				// Ignore collisions with player
-				if (characterController != null) {
+				if (characterControllerCollider != null) {
 					Physics.IgnoreCollision (particlePool [index].collider, characterControllerCollider);
 				}
 			} else {
@@ -881,7 +895,7 @@ namespace VoxelPlay {
 			particlePool [index].rigidBody.angularVelocity = Misc.vector3zero;
 			particlePool [index].collider.size = Misc.vector3one;
 			particlePool [index].used = true;
-			particlePool [index].item.type = null;
+			particlePool [index].item.itemDefinition = null;
 			particlePool [index].item.canPickUp = false;
 			particlePool [index].item.pickingUp = false;
 			return index;

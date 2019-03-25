@@ -17,6 +17,7 @@ struct g2f {
 	VOXELPLAY_BUMPMAP_DATA(5)
 	VOXELPLAY_PARALLAX_DATA(6)
 	VOXELPLAY_NORMAL_DATA
+	VOXELPLAY_OUTLINE_DATA(7)
 };
 
 struct vertexInfo {
@@ -34,6 +35,7 @@ float3 worldCenter, norm;
 inline void PushCorner(inout g2f i, inout TriangleStream<g2f>o, float3 center, float3 corner, float4 uv) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldCenter + corner)
 	i.pos    = UnityObjectToClipPos(v.vertex);
 	VOXELPLAY_SET_VERTEX_LIGHT(i, worldCenter + corner, norm)
 	VOXELPLAY_OUTPUT_PARALLAX_DATA(v, uv, i)
@@ -76,8 +78,9 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 	float3 v7          = -v1;
 
 	g2f i;
-	VOXELPLAY_SET_TINTCOLOR(color, i);
-	VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_GEO(viewDir, normal);
+	VOXELPLAY_SET_TINTCOLOR(color, i)
+	VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_GEO(viewDir, normal)
+	VOXELPLAY_INITIALIZE_OUTLINE(i)
 	float3 side;
 
 	#if !VOXELPLAY_USE_AO
@@ -93,6 +96,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 		// Top/Bottom face
 		float occludes  = lerp(iuv.w & 8, iuv.w & 4, viewSide.y);
 		if (occludes == 0) {
+			VOXELPLAY_SET_OUTLINE( lerp (float4(iuv.w & 32, iuv.w & 2, iuv.w & 16, iuv.w & 1), float4(iuv.w & 16, iuv.w & 2, iuv.w & 32, iuv.w & 1), viewSide.y) )
 			norm = float3(0,normal.y,0);
 			VOXELPLAY_SET_TANGENT_SPACE(float3(norm.y,0,0), norm);
 			VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
@@ -105,9 +109,8 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 			occ  = lerp(lightBottom, lightTop, viewSide.y);
 			occ /= 15.0;
 			#if defined(VP_CUTOUT)
-			occ *= colorVariation;
+				occ *= colorVariation;
 			#endif
-
 			PushCorner(i, o, center, v0 * side, float4(1, 1, sideUV, occ));
 			PushCorner(i, o, center, v1 * side, float4(1, 0, sideUV, occ));
 			PushCorner(i, o, center, v4 * side, float4(0, 1, sideUV, occ));
@@ -118,6 +121,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 		// Front/back face
 		occludes  = lerp(iuv.w & 1, iuv.w & 2, viewSide.z);
 		if (occludes == 0) {
+			VOXELPLAY_SET_OUTLINE( lerp(float4(iuv.w & 16, iuv.w & 4, iuv.w & 32, iuv.w & 8), float4(iuv.w & 32, iuv.w & 4, iuv.w & 16, iuv.w & 8), viewSide.z ) )
 			norm = float3(0,0,normal.z);
 			VOXELPLAY_SET_TANGENT_SPACE(float3(-norm.z,0,0), norm)
 			VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
@@ -144,6 +148,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 		// Left/right face
 		occludes  = lerp(iuv.w & 16, iuv.w & 32, viewSide.x);
 		if (occludes == 0) {
+			VOXELPLAY_SET_OUTLINE( lerp(float4(iuv.w & 2, iuv.w & 4, iuv.w & 1, iuv.w & 8), float4(iuv.w & 1, iuv.w & 4, iuv.w & 2, iuv.w & 8), viewSide.x ) )
 			norm = float3(normal.x,0,0);
 			VOXELPLAY_SET_TANGENT_SPACE(float3(0,0,norm.x), norm);
 			VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
@@ -200,6 +205,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 		// Top/Bottom face
 		float occludes  = lerp(iuv.w & 8, iuv.w & 4, viewSide.y);
 		if (occludes == 0) {
+			VOXELPLAY_SET_OUTLINE( lerp (float4(iuv.w & 32, iuv.w & 2, iuv.w & 16, iuv.w & 1), float4(iuv.w & 16, iuv.w & 2, iuv.w & 32, iuv.w & 1), viewSide.y) )
 			norm = float3(0,normal.y,0);
 			VOXELPLAY_SET_TANGENT_SPACE(float3(norm.y,0,0), norm);
 			VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
@@ -214,6 +220,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 			#if defined(VP_CUTOUT)
 			occ *= colorVariation;
 			#endif
+
 			if (occ.x + occ.w < occ.y + occ.z) {
 				PushCorner(i, o, center, v0 * side, float4(1, 0, sideUV, occ.x));
 				PushCorner(i, o, center, v1 * side, float4(0, 0, sideUV, occ.y));
@@ -231,6 +238,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 		// Front/back face
 		occludes  = lerp(iuv.w & 1, iuv.w & 2, viewSide.z);
 		if (occludes == 0) {
+			VOXELPLAY_SET_OUTLINE( lerp(float4(iuv.w & 16, iuv.w & 4, iuv.w & 32, iuv.w & 8), float4(iuv.w & 32, iuv.w & 4, iuv.w & 16, iuv.w & 8), viewSide.z ) )
 			norm  = float3(0,0,normal.z);
 			VOXELPLAY_SET_TANGENT_SPACE(float3(-norm.z,0,0), norm)
 			VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
@@ -264,6 +272,7 @@ void PushVoxel(float3 center, int4 iuv, int4 occi, inout TriangleStream<g2f> o) 
 		// Left/right face
 		occludes  = lerp(iuv.w & 16, iuv.w & 32, viewSide.x);
 		if (occludes == 0) {
+			VOXELPLAY_SET_OUTLINE( lerp(float4(iuv.w & 2, iuv.w & 4, iuv.w & 1, iuv.w & 8), float4(iuv.w & 1, iuv.w & 4, iuv.w & 2, iuv.w & 8), viewSide.x ) )
 			norm  = float3(normal.x,0,0);
 			VOXELPLAY_SET_TANGENT_SPACE(float3(0,0,norm.x), norm);
 			VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
@@ -311,7 +320,7 @@ fixed4 frag (g2f i) : SV_Target {
 
 	VOXELPLAY_APPLY_PARALLAX(i);
 
-	fixed4 color = VOXELPLAY_GET_TEXEL_GEO(i.uv.xyz)
+	fixed4 color = VOXELPLAY_GET_TEXEL_GEO(i.uv.xyz);
 
 	#if defined(VP_CUTOUT)
 	clip(color.a - 0.5);

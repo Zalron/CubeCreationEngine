@@ -10,13 +10,14 @@ namespace VoxelPlay {
 	public class VoxelPlayEnvironmentEditor : Editor {
 
 		SerializedProperty world, enableBuildMode, buildMode, welcomeMessage, welcomeMessageDuration, renderInEditor, renderInEditorLowPriority, editorDraftMode, characterController;
-		SerializedProperty enableConsole, showConsole, enableInventory, enableStatusBar, enableLoadingPanel, loadSavedGame, saveFilename, enableDebugWindow, showFPS;
-		SerializedProperty globalIllumination, ambientLight, daylightShadowAtten, enableSmoothLighting, enableFogSkyBlending, textureSize, useGeometryShaders, shadowsOnWater, enableShadows;
-		SerializedProperty enableTinting, enableOutline, outlineColor, outlineThreshold;
+		SerializedProperty enableConsole, showConsole, enableInventory, enableStatusBar, enableLoadingPanel, loadingText, initialWaitTime, initialWaitText, loadSavedGame, saveFilename, enableDebugWindow, showFPS;
+		SerializedProperty globalIllumination, ambientLight, daylightShadowAtten, enableSmoothLighting, enableFogSkyBlending, textureSize, useGeometryShaders, enableShadows;
+		SerializedProperty shadowsOnWater;
+		SerializedProperty enableTinting, enableOutline, outlineColor, outlineThreshold, enableCurvature;
 		SerializedProperty enableReliefMapping, reliefStrength, reliefIterations, reliefIterationsBinarySearch;
 		SerializedProperty enableNormalMap, usePixelLights;
-		SerializedProperty hqFiltering, mipMapBias, doubleSidedGlass;
-		SerializedProperty maxChunks, prewarmChunksInEditor, visibleChunksDistance, adjustCameraFarClip, forceChunkDistance, maxCPUTimePerFrame, maxChunksPerFrame, maxTreesPerFrame, maxBushesPerFrame, onlyGenerateInFrustum, onlyRenderInFrustum;
+		SerializedProperty hqFiltering, mipMapBias, doubleSidedGlass, transparentBling;
+		SerializedProperty maxChunks, prewarmChunksInEditor, visibleChunksDistance, adjustCameraFarClip, forceChunkDistance, maxCPUTimePerFrame, maxChunksPerFrame, maxTreesPerFrame, maxBushesPerFrame, lowMemoryMode, onlyRenderInFrustum;
 		#if !UNITY_WEBGL
 		SerializedProperty multiThreadGeneration;
 		#endif
@@ -36,6 +37,9 @@ namespace VoxelPlay {
 		Color titleColor;
 		static GUIStyle sectionHeaderStyle;
 		static bool expandQualitySection, expandVoxelGenerationSection, expandSkySection, expandInGameSection, expandDefaultsSection;
+		bool enableCurvatureFromShader;
+		string curvatureAmount;
+
 
 		void OnEnable () {
 			titleColor = EditorGUIUtility.isProSkin ? new Color (0.52f, 0.66f, 0.9f) : new Color (0.12f, 0.16f, 0.4f);
@@ -54,6 +58,9 @@ namespace VoxelPlay {
 			enableInventory = serializedObject.FindProperty ("enableInventory");
 			prewarmChunksInEditor = serializedObject.FindProperty ("prewarmChunksInEditor");
 			enableLoadingPanel = serializedObject.FindProperty ("enableLoadingPanel");
+			loadingText = serializedObject.FindProperty ("loadingText");
+			initialWaitTime = serializedObject.FindProperty ("initialWaitTime");
+			initialWaitText = serializedObject.FindProperty ("initialWaitText");
 			loadSavedGame = serializedObject.FindProperty ("loadSavedGame");
 			saveFilename = serializedObject.FindProperty ("saveFilename");
 			enableDebugWindow = serializedObject.FindProperty ("enableDebugWindow");
@@ -78,10 +85,12 @@ namespace VoxelPlay {
 			shadowsOnWater = serializedObject.FindProperty ("shadowsOnWater");
 			enableShadows = serializedObject.FindProperty ("enableShadows");
 			enableTinting = serializedObject.FindProperty ("enableTinting");
+			enableCurvature = serializedObject.FindProperty ("enableCurvature");
 			enableOutline = serializedObject.FindProperty ("enableOutline");
 			outlineColor = serializedObject.FindProperty ("outlineColor");
 			outlineThreshold = serializedObject.FindProperty ("outlineThreshold");
-			doubleSidedGlass  = serializedObject.FindProperty ("doubleSidedGlass");
+			doubleSidedGlass = serializedObject.FindProperty ("doubleSidedGlass");
+			transparentBling = serializedObject.FindProperty ("transparentBling");
 			hqFiltering = serializedObject.FindProperty ("hqFiltering");
 			mipMapBias = serializedObject.FindProperty ("mipMapBias");
 			maxChunks = serializedObject.FindProperty ("maxChunks");
@@ -96,7 +105,7 @@ namespace VoxelPlay {
 			#if !UNITY_WEBGL
 			multiThreadGeneration = serializedObject.FindProperty ("multiThreadGeneration");
 			#endif
-			onlyGenerateInFrustum = serializedObject.FindProperty ("onlyGenerateInFrustum");
+			lowMemoryMode = serializedObject.FindProperty ("lowMemoryMode");
 			onlyRenderInFrustum = serializedObject.FindProperty ("onlyRenderInFrustum");
 			enableColliders = serializedObject.FindProperty ("enableColliders");
 			enableNavMesh = serializedObject.FindProperty ("enableNavMesh");
@@ -142,6 +151,9 @@ namespace VoxelPlay {
 			expandSkySection = EditorPrefs.GetBool ("VoxelPlaySkySection", false);
 			expandInGameSection = EditorPrefs.GetBool ("VoxelPlayInGameSection", false);
 			expandDefaultsSection = EditorPrefs.GetBool ("VoxelPlayDefaultsSection", false);
+
+			enableCurvatureFromShader = "1".Equals (GetShaderOptionValue ("VOXELPLAY_CURVATURE", "VPCommonVertexModifier.cginc"));
+			curvatureAmount = GetShaderOptionValue ("VOXELPLAY_CURVATURE_AMOUNT", "VPCommonVertexModifier.cginc");
 		}
 
 		void OnDisable () {
@@ -200,6 +212,7 @@ namespace VoxelPlay {
 			bool reloadWorldTextures = false;
 			bool updateTintingMacro = false;
 			bool updateOutlineProperties = false;
+			bool updateCurvatureMacro = false;
 			bool prevBool;
 
 			// General settings
@@ -256,13 +269,23 @@ namespace VoxelPlay {
 						}
 
 						// Drawing the world editor
+						EditorGUI.BeginChangeCheck ();
 						EditorGUILayout.BeginVertical (boxStyle);
 						cachedTerrainGeneratorEditor.OnInspectorGUI ();
 						EditorGUILayout.EndVertical ();
+						if (EditorGUI.EndChangeCheck ()) {
+							env.NotifyTerrainGeneratorConfigurationChanged ();
+							VoxelPlayBiomeExplorer.requestRefresh = true;
+							UnityEditorInternal.InternalEditorUtility.RepaintAllViews ();
+						}
 						EditorGUILayout.Separator ();
 					}
 				}
-												
+
+				if (GUILayout.Button ("Open Biome Map Explorer")) {
+					VoxelPlayBiomeExplorer.ShowWindow ();
+				}
+
 				EditorGUILayout.BeginHorizontal ();
 				if (GUILayout.Button ("Regenerate Terrain")) {
 					renderInEditor.boolValue = true;
@@ -342,6 +365,7 @@ namespace VoxelPlay {
 					hqFiltering.boolValue = true;
 					usePixelLights.boolValue = true;
 					doubleSidedGlass.boolValue = true;
+					transparentBling.boolValue = true;
 					if (VoxelPlayFirstPersonController.instance != null) {
 						VoxelPlayFirstPersonController.instance.autoInvertColors = true;
 					}
@@ -358,6 +382,7 @@ namespace VoxelPlay {
 					denseTrees.boolValue = true;
 					hqFiltering.boolValue = true;
 					doubleSidedGlass.boolValue = true;
+					transparentBling.boolValue = true;
 					if (VoxelPlayFirstPersonController.instance != null) {
 						VoxelPlayFirstPersonController.instance.autoInvertColors = true;
 					}
@@ -375,8 +400,8 @@ namespace VoxelPlay {
 					denseTrees.boolValue = false;
 					hqFiltering.boolValue = false;
 					doubleSidedGlass.boolValue = false;
-					onlyGenerateInFrustum.boolValue = true;
 					onlyRenderInFrustum.boolValue = true;
+					transparentBling.boolValue = false;
 					if (VoxelPlayFirstPersonController.instance != null) {
 						VoxelPlayFirstPersonController.instance.autoInvertColors = false;
 					}
@@ -420,11 +445,11 @@ namespace VoxelPlay {
 				EditorGUILayout.PropertyField (enableShadows, new GUIContent ("Enable Shadows", "Turns on/off shadow casting and receiving on voxels."));
 				if (enableShadows.boolValue != prevBool)
 					rebuildWorld = true;
-				prevBool = shadowsOnWater.boolValue;
+				EditorGUI.BeginChangeCheck ();
 				EditorGUILayout.PropertyField (shadowsOnWater, new GUIContent ("Shadows On Water", "Enables shadow receiving on water surface (only available with Geometry Shaders)."));
-				if (shadowsOnWater.boolValue != prevBool)
+				if (EditorGUI.EndChangeCheck ()) {
 					rebuildWorld = true;
-
+				}
 				prevBool = enableSmoothLighting.boolValue;
 				EditorGUILayout.PropertyField (enableSmoothLighting, new GUIContent ("Smooth Lighting", "Interpolates lighting between voxel vertices. Also includes ambient occlusion."));
 				if (enableSmoothLighting.boolValue != prevBool)
@@ -441,6 +466,7 @@ namespace VoxelPlay {
 
 				EditorGUI.BeginChangeCheck ();
 				EditorGUILayout.PropertyField (doubleSidedGlass, new GUIContent ("Double Sided Glass", "Renders both sides of transparent voxels."));
+				EditorGUILayout.PropertyField (transparentBling, new GUIContent ("Transparent Bling", "Enables shining effect on transparent voxels."));
 				if (EditorGUI.EndChangeCheck ()) {
 					rebuildWorld = true;
 				}
@@ -495,6 +521,24 @@ namespace VoxelPlay {
 					reloadWorldTextures = true;
 				}
 
+				GUI.enabled = !Application.isPlaying;
+				EditorGUI.BeginChangeCheck ();
+				enableCurvatureFromShader = EditorGUILayout.Toggle(new GUIContent ("Enable Curvature", "Enables curvature vertex modifier in VoxelPlay shaders."), enableCurvatureFromShader);
+				enableCurvature.boolValue = enableCurvatureFromShader;
+				if (EditorGUI.EndChangeCheck ()) {
+					updateCurvatureMacro = true;
+					rebuildWorld = true;
+				}
+				if (enableCurvatureFromShader) {
+					EditorGUILayout.BeginHorizontal ();
+					curvatureAmount = EditorGUILayout.TextField (new GUIContent ("   Amount", "Vertex shift amount multiplier."), curvatureAmount);
+					if (GUILayout.Button ("Update", GUILayout.Width(65))) {
+						updateCurvatureMacro = true;
+						rebuildWorld = true;
+					}
+					EditorGUILayout.EndHorizontal ();
+				}
+				GUI.enabled = true;
 			}
 			// Voxel Generation
 			EditorGUILayout.Separator ();
@@ -518,9 +562,16 @@ namespace VoxelPlay {
 				EditorGUILayout.LabelField ("   Recommended >=", env.maxChunksRecommended.ToString ());
 				EditorGUILayout.IntSlider (prewarmChunksInEditor, 1000, maxChunks.intValue, new GUIContent ("   Prewarm In Editor", "Number of chunks that will be reserved during start in Unity Editor before game starts. In the final build, all chunks are reserved before game starts to provide a smooth gameplay experience."));
 				EditorGUILayout.PropertyField (enableLoadingPanel, new GUIContent ("   Loading Screen", "Shows a loading panel during start up while chunks are being reserved."));
+				if (enableLoadingPanel.boolValue) {
+					EditorGUILayout.PropertyField (loadingText, new GUIContent ("      Text", "Text to show while initializing the engine."));
+				}
+				EditorGUILayout.PropertyField (initialWaitTime, new GUIContent ("   Initial Wait Time", "Additional seconds to wait before loading screen is removed."));
+				if (initialWaitTime.floatValue > 0) {
+					EditorGUILayout.PropertyField (initialWaitText, new GUIContent ("      Text", "Text to show diring the additional wait time."));
+				}
 				EditorGUILayout.LabelField ("   Used", env.chunksUsed.ToString () + " (" + (env.chunksUsed * 100f / env.maxChunks).ToString ("F1") + "% Pool)");
 				EditorGUILayout.Separator ();
-				EditorGUILayout.PropertyField (onlyGenerateInFrustum, new GUIContent ("Only Generate In Frustum", "When enabled, only chunks inside the camera frustum are generated."));
+				EditorGUILayout.PropertyField (lowMemoryMode, new GUIContent ("Low Memory Mode", "When enabled, internal buffers size is reduced to the minimum. GC spikes can occur if a buffer needs resizing. Enable this option to reduce memory pressure warnings on mobile devices."));
 				EditorGUILayout.PropertyField (onlyRenderInFrustum, new GUIContent ("Only Render In Frustum", "When enabled, only chunks inside the camera frustum will be rendered."));
 				#if UNITY_WEBGL
 				GUI.enabled = false;
@@ -652,7 +703,12 @@ namespace VoxelPlay {
 					} else {
 						Debug.Log ("Optimization: disabling tinting in Voxel.cs script...");
 					}
-					env.UpdateTintingCodeMacro (enableTinting.boolValue);
+					env.UpdateTintingCodeMacro ();
+				}
+				if (updateCurvatureMacro) {
+					UpdateCurvatureMacro ();
+					EditorGUIUtility.ExitGUI ();
+					return;
 				}
 				if (updateOutlineProperties) {
 					env.UpdateOutlineProperties ();
@@ -680,7 +736,9 @@ namespace VoxelPlay {
 					env.Redraw (reloadWorldTextures);
 				}
 				env.UpdateMaterialProperties ();
+
 				EditorApplication.update -= env.UpdateInEditor;
+
 				if (renderInEditor.boolValue) {
 					EditorApplication.update += env.UpdateInEditor;
 				}
@@ -719,7 +777,68 @@ namespace VoxelPlay {
 			world.objectReferenceValue = wd;
 			EditorGUIUtility.PingObject (wd);
 		}
-				
+
+
+		string GetShaderOptionValue (string option, string file) {
+			string[] res = Directory.GetFiles (Application.dataPath, file, SearchOption.AllDirectories);
+			string path = null;
+			for (int k = 0; k < res.Length; k++) {
+				if (res [k].Contains ("Voxel Play")) {
+					path = res [k];
+					break;
+				}
+			}
+			if (path == null) {
+				Debug.LogError (file + " could not be found!");
+				return "";
+			}
+
+			string[] code = File.ReadAllLines (path, System.Text.Encoding.UTF8);
+			string searchToken = "#define " + option;
+			for (int k = 0; k < code.Length; k++) {
+				if (code [k].Contains (searchToken)) {
+					string[] values = code [k].Trim ().Split ((char[])null, StringSplitOptions.RemoveEmptyEntries);
+					if (values.Length == 3) {
+						return values [2];
+					}
+					break;
+				}
+			}
+			return "";
+		}
+
+		void SetShaderOptionValue (string option, string file, string value) {
+			string[] res = Directory.GetFiles (Application.dataPath, file, SearchOption.AllDirectories);
+			string path = null;
+			for (int k = 0; k < res.Length; k++) {
+				if (res [k].Contains ("Voxel Play")) {
+					path = res [k];
+					break;
+				}
+			}
+			if (path == null) {
+				Debug.LogError (file + " could not be found!");
+				return;
+			}
+
+			string[] code = File.ReadAllLines (path, System.Text.Encoding.UTF8);
+			string searchToken = "#define " + option;
+			for (int k = 0; k < code.Length; k++) {
+				if (code [k].Contains (searchToken)) {
+					code [k] = "#define " + option + " " + value;
+					File.WriteAllLines (path, code, System.Text.Encoding.UTF8);
+					break;
+				}
+			}
+		}
+
+		public void UpdateCurvatureMacro() {
+			env.SetShaderOptionValue ("VOXELPLAY_CURVATURE", "VPCommonVertexModifier.cginc", enableCurvature.boolValue ? "1" : "0");
+			env.SetShaderOptionValue ("VOXELPLAY_CURVATURE_AMOUNT", "VPCommonVertexModifier.cginc", curvatureAmount.ToString ());
+			Debug.Log ("Voxel Play shaders updated.");
+			AssetDatabase.Refresh ();
+		}
+
 
 	}
 

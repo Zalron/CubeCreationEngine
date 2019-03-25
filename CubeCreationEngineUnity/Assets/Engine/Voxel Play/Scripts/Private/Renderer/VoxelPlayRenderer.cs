@@ -172,6 +172,14 @@ namespace VoxelPlay {
 		#region Renderer initialization
 
 		void InitRenderer () {
+
+			draftModeActive = !applicationIsPlaying && editorDraftMode;
+			#if UNITY_WEBGL
+			effectiveUseGeometryShaders = false;
+			#else
+			effectiveUseGeometryShaders = useGeometryShaders && !isMobilePlatform && SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Metal;
+			#endif
+
 			// Init materials
 			// triangle opaque & cutout must always be loaded to support custom voxel types
 			matTriangleOpaque = Instantiate<Material> (Resources.Load<Material> ("VoxelPlay/Materials/VP Voxel Triangle Opaque"));
@@ -206,6 +214,9 @@ namespace VoxelPlay {
 					matTerrainTransp = Instantiate<Material> (Resources.Load<Material> ("VoxelPlay/Materials/VP Voxel Triangle Transp"));
 				}
 				matTerrainOpNoAO = matTerrainOpaque;
+			}
+			if (transparentBling) {
+				matTerrainTransp.EnableKeyword (SKW_VOXELPLAY_TRANSP_BLING);
 			}
 
 			// Init system arrays and structures
@@ -249,7 +260,7 @@ namespace VoxelPlay {
 			InitMeshJobsPool ();
 
 			if (effectiveUseGeometryShaders) {
-				int initialCapacity = 2048;
+				const int initialCapacity = 2048;
 				opaqueIndices = new List<int> (initialCapacity);
 				cutoutIndices = new List<int> (initialCapacity);
 				waterIndices = new List<int> (initialCapacity);
@@ -267,10 +278,15 @@ namespace VoxelPlay {
 			greedyCutout = new VoxelPlayGreedyMesher (true);
 
 			instancingManager = new VoxelPlayInstancingRendererManager (this);
-			if (currentCamera.GetComponent<VoxelPlayLightManager> () == null) {
+
+			VoxelPlayLightManager lightManager = currentCamera.GetComponent<VoxelPlayLightManager> ();
+			if (lightManager == null) {
 				currentCamera.gameObject.AddComponent<VoxelPlayLightManager> ();
+			} else {
+				lightManager.enabled = true;
 			}
 			StartGenerationThread ();
+
 		}
 
 		void StartGenerationThread () {
@@ -304,7 +320,6 @@ namespace VoxelPlay {
 			emptyChunkAboveTerrain = new Voxel[16 * 16 * 16];
 			for (int k = 0; k < emptyChunkAboveTerrain.Length; k++) {
 				emptyChunkAboveTerrain [k].light = (byte)15;
-
 				emptyChunkUnderground [k].hasContent = 1;
 				emptyChunkUnderground [k].opaque = FULL_OPAQUE;
 			}
@@ -352,27 +367,28 @@ namespace VoxelPlay {
 			meshJobMeshDataGenerationIndex = -1;
 			meshJobMeshDataGenerationReadyIndex = -1;
 			meshJobMeshUploadIndex = -1;
-			int initialCapacity = effectiveUseGeometryShaders ? 2048 : 20000;
+			int initialCapacity = effectiveUseGeometryShaders ? 2048 : 15000;
 			for (int k = 0; k < meshJobs.Length; k++) {
-				meshJobs [k].vertices = new List<Vector3> (initialCapacity);
-				meshJobs [k].uv0 = new List<Vector4> (initialCapacity);
-				meshJobs [k].uv2 = new List<Vector4> (initialCapacity);
-				meshJobs [k].colors = new List<Color32> (initialCapacity);
-				meshJobs [k].normals = new List<Vector3> (initialCapacity);
-				if (!effectiveUseGeometryShaders) {
-					meshJobs [k].opaqueIndices = new List<int> (20000);
-					meshJobs [k].cutoutIndices = new List<int> (20000);
-					meshJobs [k].waterIndices = new List<int> (5000);
-					meshJobs [k].cutxssIndices = new List<int> (2000);
-					meshJobs [k].transpIndices = new List<int> ();
+				meshJobs [k].vertices = GetList<Vector3> (initialCapacity);
+				meshJobs [k].uv0 = GetList<Vector4> (initialCapacity);
+				meshJobs [k].colors = GetList<Color32> (enableTinting ? initialCapacity: 4);
+				if (effectiveUseGeometryShaders) {
+					meshJobs [k].uv2 = GetList<Vector4> (initialCapacity);
+				} else {
+					meshJobs [k].normals = GetList<Vector3> (initialCapacity);
+					meshJobs [k].opaqueIndices = GetList<int> (5000);
+					meshJobs [k].cutoutIndices = GetList<int> (18000);
+					meshJobs [k].waterIndices = GetList<int> (4000);
+					meshJobs [k].cutxssIndices = GetList<int> (1800);
+					meshJobs [k].transpIndices = GetList<int> (4);
 				}
 				if (enableColliders) {
-					meshJobs [k].colliderVertices = new List<Vector3> (2700);
-					meshJobs [k].colliderIndices = new List<int> (4000);
+					meshJobs [k].colliderVertices = GetList<Vector3> (2700);
+					meshJobs [k].colliderIndices = GetList<int> (4000);
 				}
 				if (enableNavMesh) {
-					meshJobs [k].navMeshVertices = new List<Vector3> (2700);
-					meshJobs [k].navMeshIndices = new List<int> (4000);
+					meshJobs [k].navMeshVertices = GetList<Vector3> (2700);
+					meshJobs [k].navMeshIndices = GetList<int> (4000);
 				}
 				meshJobs [k].mivs = new FastList<ModelInVoxel> ();
 
@@ -399,12 +415,18 @@ namespace VoxelPlay {
 			}
 			if (enableTinting) {
 				matTerrainOpaque.EnableKeyword (SKW_VOXELPLAY_USE_TINTING);
+				matTerrainCutout.EnableKeyword (SKW_VOXELPLAY_USE_TINTING);
 				matTriangleOpaque.EnableKeyword (SKW_VOXELPLAY_USE_TINTING);
 				matTriangleCutout.EnableKeyword (SKW_VOXELPLAY_USE_TINTING);
+				matTerrainTransp.EnableKeyword (SKW_VOXELPLAY_USE_TINTING);
+				matTerrainOpNoAO.EnableKeyword (SKW_VOXELPLAY_USE_TINTING);
 			} else {
 				matTerrainOpaque.DisableKeyword (SKW_VOXELPLAY_USE_TINTING);
+				matTerrainCutout.DisableKeyword (SKW_VOXELPLAY_USE_TINTING);
 				matTriangleOpaque.DisableKeyword (SKW_VOXELPLAY_USE_TINTING);
 				matTriangleCutout.DisableKeyword (SKW_VOXELPLAY_USE_TINTING);
+				matTerrainTransp.DisableKeyword (SKW_VOXELPLAY_USE_TINTING);
+				matTerrainOpNoAO.DisableKeyword (SKW_VOXELPLAY_USE_TINTING);
 			}
 			if (enableFogSkyBlending) {
 				Shader.EnableKeyword (SKW_VOXELPLAY_GLOBAL_USE_FOG);
@@ -430,12 +452,18 @@ namespace VoxelPlay {
 				matTriangleCutout.DisableKeyword (SKW_VOXELPLAY_AA_TEXELS);
 				matTerrainTransp.DisableKeyword (SKW_VOXELPLAY_AA_TEXELS);
 			}
+
 			UpdateOutlineProperties ();
 			UpdateNormalMapProperties ();
 			UpdateParallaxProperties ();
 			UpdatePixelLightsProperties ();
 
 			UpdateAmbientProperties ();
+
+			if (OnSettingsChanged != null) {
+				OnSettingsChanged ();
+			}
+
 		}
 
 		void UpdateAmbientProperties() {
@@ -521,7 +549,7 @@ namespace VoxelPlay {
 				if (enableOutline) {
 					mat.EnableKeyword (SKW_VOXELPLAY_USE_OUTLINE);
 					mat.SetColor ("_OutlineColor", outlineColor);
-					mat.SetFloat ("_OutlineThreshold", outlineThreshold);
+					mat.SetFloat ("_OutlineThreshold", hqFiltering ? outlineThreshold * 10f : outlineThreshold);
 				} else {
 					mat.DisableKeyword (SKW_VOXELPLAY_USE_OUTLINE);
 				}
@@ -595,7 +623,7 @@ namespace VoxelPlay {
 			}
 
 			if (newJobIndex == meshJobMeshDataGenerationIndex || newJobIndex == meshJobMeshUploadIndex) {
-				ShowMessage ("Exhausted mesh job queue!");
+                // no more jobs possible atm
 				return false;
 			}
 			lock (indicesUpdating) {
@@ -658,7 +686,7 @@ namespace VoxelPlay {
 
 			// Reset bit field; inconclusive neighbours are those neighbours which are undefined when an adjacent chunk is rendered. We mark it so then it's finally rendered, we re-render the adjacent chunk. This is required if the new chunk can 
 			// break holes on the edge of the chunk while no lighting is entering the chunk or global illumination is disabled (yes, it's an edge case but must be addressed to avoid gaps in those cases).
-			chunk.inconclusiveNeighbours = (byte)(chunk.inconclusiveNeighbours & ~CHUNK_IS_INCONCLUSIVE);
+			chunk.inconclusiveNeighbours = 0; //(byte)(chunk.inconclusiveNeighbours & ~CHUNK_IS_INCONCLUSIVE);
 
 			for (int c = 0, y = -1; y <= 1; y++) {
 				int yy = chunkY + y;
@@ -779,7 +807,7 @@ namespace VoxelPlay {
 				}
 				chunk.mr.sharedMaterials = matTerrainArray [meshJobs [jobIndex].matVoxelIndex];
 
-				mesh.bounds = Misc.bounds16;
+				mesh.bounds = enableCurvature ? Misc.bounds16Stretched : Misc.bounds16;
 
 				chunk.mf.sharedMesh = mesh;
 
@@ -879,15 +907,21 @@ namespace VoxelPlay {
 						// Note: placeHolder.modelInstance layer must be different from layerVoxels to allow dynamic voxels collide with terrain. So don't set its layer to layer voxels
 						placeholder.modelMeshRenderer = placeholder.modelInstance.GetComponent<MeshRenderer> ();
 						if (voxelDefinition.gpuInstancing) {
-							placeholder.modelMeshRenderer.enabled = false;
+							if (placeholder.modelMeshRenderer != null) {
+								placeholder.modelMeshRenderer.enabled = false;
+							}
 						} else {
 							mf = placeholder.modelMeshFilter = placeholder.modelInstance.GetComponent<MeshFilter> ();
-							mesh = mf.sharedMesh = Instantiate<Mesh> (mf.sharedMesh);
-							mesh.hideFlags = HideFlags.DontSave;
+							if (mf != null) {
+								mesh = mf.sharedMesh = Instantiate<Mesh> (mf.sharedMesh);
+								mesh.hideFlags = HideFlags.DontSave;
+							}
 						}
 					} else {
 						mf = placeholder.modelMeshFilter;
-						mesh = mf.sharedMesh;
+						if (mf != null) {
+							mesh = mf.sharedMesh;
+						}
 					}
 
 					// Parent model to the placeholder

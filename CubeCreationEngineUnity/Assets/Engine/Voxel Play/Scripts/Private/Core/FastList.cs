@@ -50,27 +50,38 @@ namespace VoxelPlay {
 			return -1;
 		}
 
-		public void RemoveAt(int index) {
+		public bool RemoveAt(int index) {
 			if (index < 0 || index >= count)
-				return;
+				return false;
 			for (int k = index; k < count - 1; k++) {
 				values [k] = values [k + 1];
 			}
 			count--;
+			return true;
 		}
+
+		public bool Remove(T value) {
+			int k = IndexOf (value);
+			if (k < 0) {
+				return false;
+			}
+			return RemoveAt (k);
+		}
+
 
 		/// <summary>
 		/// Removes the last added element
 		/// </summary>
-		public void RemoveLast() {
+		public bool RemoveLast() {
 			if (count <= 0)
-				return;
+				return false;
 			--count;
 			if (count > 0) {
 				last = values [count - 1];
 			} else {
 				last = default(T);
 			}
+			return true;
 		}
 
 		public T FetchDirty() {

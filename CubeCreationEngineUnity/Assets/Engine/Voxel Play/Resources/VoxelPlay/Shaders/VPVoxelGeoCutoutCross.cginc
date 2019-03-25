@@ -22,9 +22,11 @@ struct vertexInfo {
 void vert (inout appdata v) {
 }
 
+float3 worldCenter;
 inline void PushCorner(inout g2f i, inout TriangleStream<g2f>o, float3 center, float3 corner, float4 uv) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldCenter + corner)
 	i.pos    = UnityObjectToClipPos(v.vertex);
 	VOXELPLAY_OUTPUT_UV(uv, i);
 	TRANSFER_SHADOW(i);
@@ -34,7 +36,7 @@ inline void PushCorner(inout g2f i, inout TriangleStream<g2f>o, float3 center, f
 
 void PushVoxel(float3 center, float4 uv, inout TriangleStream<g2f> o) {
 	// cube vertices
-	float3 worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
+	worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
 	float3 viewDir     = _WorldSpaceCameraPos - worldCenter;
 
 	float3 v0          = cubeVerts[0];

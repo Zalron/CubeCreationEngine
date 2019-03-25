@@ -9,6 +9,7 @@ namespace VoxelPlay {
 	public delegate void OnPlayerGetDamageEvent (ref int damage, int remainingLifePoints);
 	public delegate void OnPlayerIsKilledEvent ();
 
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000001860-voxel-play-player")]
 	public partial class VoxelPlayPlayer : MonoBehaviour {
 
 		public event OnPlayerInventoryEvent OnSelectedItemChange;
@@ -40,9 +41,15 @@ namespace VoxelPlay {
 
 		[Header ("Attack")]
 		public float hitDelay = 0.2f;
-		public int hitDamage = 2;
+		public int hitDamage = 3;
 		public float hitRange = 5f;
 		public int hitDamageRadius = 1;
+
+		[Header ("Bare Hands")]
+		public float bareHandsHitDelay = 0.2f;
+		public int bareHandsHitDamage = 3;
+		public float bareHandsHitRange = 5f;
+		public int bareHandsHitDamageRadius = 1;
 
 		int _selectedItemIndex;
 
@@ -58,12 +65,14 @@ namespace VoxelPlay {
 					if (value >= 0 && value < items.Count) {
 						int prevItemIndex = _selectedItemIndex;
 						_selectedItemIndex = value;
-						int newHitDamange = items [_selectedItemIndex].item.hitDamage;
-						if (newHitDamange != 0)
-							hitDamage = newHitDamange;
-						float newHitDelay = items [_selectedItemIndex].item.hitDelay;
-						if (newHitDelay != 0)
-							hitDelay = newHitDelay;
+						if (items [_selectedItemIndex].item == null) {
+							_selectedItemIndex = -1;
+							return;
+						}
+						hitDamage = items [_selectedItemIndex].item.GetPropertyValue<int> ("hitDamage", bareHandsHitDamage);
+						hitDelay = items [_selectedItemIndex].item.GetPropertyValue<float> ("hitDelay", bareHandsHitDelay);
+						hitRange = items [_selectedItemIndex].item.GetPropertyValue<float> ("hitRange", bareHandsHitRange);
+						hitDamageRadius = items [_selectedItemIndex].item.GetPropertyValue<int> ("hitDamageRadius", bareHandsHitDamageRadius);
 					
 						ShowSelectedItem ();
 						if (OnSelectedItemChange != null) {
@@ -78,7 +87,7 @@ namespace VoxelPlay {
 		/// Returns a copy of currently selected item (note it's a struct) or InventoryItem.Null if nothing selected.
 		/// </summary>
 		/// <returns>The selected item.</returns>
-		public InventoryItem GetSelectedItem() {
+		public InventoryItem GetSelectedItem () {
 			List<InventoryItem> items = this.items;
 			if (_selectedItemIndex >= 0 && _selectedItemIndex < items.Count) {
 				return items [_selectedItemIndex];
@@ -89,10 +98,19 @@ namespace VoxelPlay {
 
 
 		/// <summary>
+		/// Unselects any item selected
+		/// </summary>
+		public void UnSelectItem () {
+			_selectedItemIndex = -1;
+			ShowSelectedItem ();
+		}
+
+
+		/// <summary>
 		/// Selects item by item object
 		/// </summary>
 		/// <param name="item">Item.</param>
-		public bool SetSelectedItem(InventoryItem item) {
+		public bool SetSelectedItem (InventoryItem item) {
 			List<InventoryItem> items = this.items;
 			int count = items.Count;
 			for (int k = 0; k < count; k++) {
@@ -108,7 +126,7 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Selects an item from inventory by its voxel definition type
 		/// </summary>
-		public bool SetSelectedItem(VoxelDefinition vd) {
+		public bool SetSelectedItem (VoxelDefinition vd) {
 			List<InventoryItem> items = this.items;
 			int count = items.Count;
 			for (int k = 0; k < count; k++) {
@@ -154,9 +172,6 @@ namespace VoxelPlay {
 			get {
 				if (_audioSource == null) {
 					_audioSource = transform.GetComponentInChildren<AudioSource> (true);
-					if (_audioSource == null) {
-						Debug.LogError ("Voxel Play: An AudioSource component attached to the player gameobject is required.");
-					}
 				}
 				return _audioSource;
 			}
@@ -218,7 +233,10 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Adds a new item to the inventory
 		/// </summary>
-		public void AddInventoryItem (ItemDefinition newItem, float quantity = 1) {
+		public bool AddInventoryItem (ItemDefinition newItem, float quantity = 1) {
+			if (newItem == null)
+				return false;
+			
 			// Check if item is already in inventory
 			int itemsCount = items.Count;
 			InventoryItem i;
@@ -228,7 +246,7 @@ namespace VoxelPlay {
 					i.quantity += quantity;
 					items [k] = i;
 					ShowSelectedItem ();
-					return;
+					return false;
 				}
 			}
 			i = new InventoryItem ();
@@ -237,9 +255,11 @@ namespace VoxelPlay {
 			items.Add (i);
 
 			if (_selectedItemIndex < 0) {
-				selectedItemIndex = 0;
+				selectedItemIndex = items.Count - 1;
 				ShowSelectedItem ();
 			}
+
+			return true;
 		}
 
 		/// <summary>
@@ -289,7 +309,7 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Returns true if player has this item in the inventory
 		/// </summary>
-		public bool HasItem(ItemDefinition item) {
+		public bool HasItem (ItemDefinition item) {
 			return GetItemQuantity (item) > 0;
 		}
 
@@ -298,7 +318,7 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Returns the number of units of a ItemDefinition the player has (if any)
 		/// </summary>
-		public float GetItemQuantity(ItemDefinition item) {
+		public float GetItemQuantity (ItemDefinition item) {
 			int itemCount = items.Count;
 			for (int k = 0; k < itemCount; k++) {
 				if (items [k].item == item) {

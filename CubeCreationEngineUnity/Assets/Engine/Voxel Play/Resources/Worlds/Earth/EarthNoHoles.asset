@@ -23,6 +23,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7917ceb79e2334df4b1fe3467f52c8a0, type: 2}
   - {fileID: 11400000, guid: 6529c4ade1ef7407cb0745350aeb3c3c, type: 2}
   - {fileID: 11400000, guid: d041a3e3b44a0434190d17225a5dc721, type: 2}
+  defaultBiome: {fileID: 0}
   terrainGenerator: {fileID: 11400000, guid: 9176b9ec3019c476d8fcbf13968eecb8, type: 2}
   bedrockVoxel: {fileID: 11400000, guid: 62e537e35412d45a799ca5f5da92f457, type: 2}
   detailGenerators:
@@ -40,6 +41,8 @@ MonoBehaviour:
   cloudCoverage: 110
   cloudAltitude: 150
   skyTint: {r: 0.52, g: 0.5, b: 1, a: 1}
+  lightScattering: 1
+  lightIntensityMultiplier: 1
   emissionAnimationSpeed: 0.5
   emissionMinIntensity: 0.5
   emissionMaxIntensity: 1.2
@@ -64,3 +67,5 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f2e9a490315cc4c3f87f51bf2f7b7405, type: 2}
   items:
   - {fileID: 11400000, guid: 5becc8720cff94ce6afda3f0ae711b81, type: 2}
+  - {fileID: 11400000, guid: ba987dc42c02148e4ba704fc224f2b99, type: 2}
+  tileRuleSets: []

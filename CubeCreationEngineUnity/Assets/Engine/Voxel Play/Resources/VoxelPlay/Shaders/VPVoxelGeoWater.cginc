@@ -1,5 +1,7 @@
 ﻿#include "VPCommon.cginc"
 
+#define FOAM_SIZE 0.12
+
 struct appdata {
 	float4 vertex   : POSITION;
 	float4 uv       : TEXCOORD0;
@@ -13,13 +15,14 @@ struct g2f {
 	VOXELPLAY_LIGHT_DATA(1,2)
 	VOXELPLAY_FOG_DATA(3)
 	fixed4 foam   : TEXCOORD4;
-	float2 flow   : TEXCOORD5;
+	fixed4 foamCorners : TEXCOORD5;
+	float2 flow   : TEXCOORD6;
 	#if defined(USE_SHADOWS)
-	float4 grabPos: TEXCOORD6;
-	SHADOW_COORDS(7)
+	float4 grabPos: TEXCOORD7;
+	SHADOW_COORDS(8)
 	#endif
-	VOXELPLAY_BUMPMAP_DATA(8)
-	VOXELPLAY_PARALLAX_DATA(9)
+	VOXELPLAY_BUMPMAP_DATA(9)
+	VOXELPLAY_PARALLAX_DATA(10)
 	VOXELPLAY_NORMAL_DATA
 };
 
@@ -33,11 +36,14 @@ sampler2D _WaterBackgroundTexture;
 void vert (inout appdata v) {
 }
 
+float3 worldCenter, norm;
 
 inline void PushCorner(inout g2f i, inout TriangleStream<g2f>o, float3 center, float3 corner, float4 uv) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldCenter + corner)
 	i.pos    = UnityObjectToClipPos(v.vertex);
+	VOXELPLAY_SET_VERTEX_LIGHT(i, worldCenter + corner, norm)
 	VOXELPLAY_OUTPUT_PARALLAX_DATA(v, uv, i)
 	VOXELPLAY_OUTPUT_NORMAL_DATA(uv, i)
 	VOXELPLAY_OUTPUT_UV(uv, i)
@@ -68,7 +74,7 @@ x.5 right
 
 void PushVoxel(float3 center, float4 uv, int4 occi, inout TriangleStream<g2f> o) {
 	// cube vertices
-	float3 worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
+	worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
 	float3 viewDir     = _WorldSpaceCameraPos - worldCenter;
 	float3 normal      = sign(viewDir);
 	float3 viewSide    = saturate(normal);
@@ -103,15 +109,17 @@ void PushVoxel(float3 center, float4 uv, int4 occi, inout TriangleStream<g2f> o)
 
 	g2f i;
 	VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_GEO(viewDir, normal);
-	i.foam   = 0.0.xxxx;
-	i.flow   = float2(0, -1);
+	i.foam        = 0.0.xxxx;
+	i.foamCorners = 0.0.xxxx;
+	i.flow        = float2(0, -1);
 
 	// Front/back face
 	float occ   = lerp( occFront, occBack, viewSide.z );
 	if (occ==0) {
-		float3 norm  = float3(0,0,normal.z);
+		norm  = float3(0,0,normal.z);
 		VOXELPLAY_SET_TANGENT_SPACE(float3(-norm.z,0,0), norm)
-		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+//		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+		VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
 		i.light = light.z;
 		PushCorner(i, o, center, lerp(v3, v7, viewSide.z), float4(1, 1, uv.x, uv.w));
 		PushCorner(i, o, center, lerp(v1, v4, viewSide.z), float4(1, 0, uv.x, uv.w));
@@ -123,9 +131,10 @@ void PushVoxel(float3 center, float4 uv, int4 occi, inout TriangleStream<g2f> o)
 	// Left/right face
 	occ  = lerp( occLeft, occRight, viewSide.x );
 	if (occ==0) {
-		float3 norm  = float3(normal.x,0,0);
+		norm  = float3(normal.x,0,0);
 		VOXELPLAY_SET_TANGENT_SPACE(float3(0,0,norm.x), norm);
-		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+//		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+		VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
 		i.light  = light.x;
 		PushCorner(i, o, center, lerp(v4, v1, viewSide.x), float4(0, 0, uv.x, uv.w));
 		PushCorner(i, o, center, lerp(v7, v3, viewSide.x), float4(0, 1, uv.x, uv.w));
@@ -137,17 +146,23 @@ void PushVoxel(float3 center, float4 uv, int4 occi, inout TriangleStream<g2f> o)
 	// Top/Bottom face
 	occ  = lerp( occBottom, occTop, viewSide.y );
 	if (occ==0) {
-		i.flow   = float2(((occi.y>>4) & 3) - 1.0, ((occi.y>>6) & 3) - 1.0);
-		float3 norm = float3(0,normal.y,0);
+		i.flow      = float2(((occi.y>>8) & 3) - 1.0, ((occi.y>>10) & 3) - 1.0);
+		norm = float3(0,normal.y,0);
 		VOXELPLAY_SET_TANGENT_SPACE(float3(norm.y,0,0), norm);
-		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+//		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+		VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
 		i.light  = light.y;
 		i.foam.x = occi.y & 1;	// back
 		i.foam.y = (occi.y>>1) & 1; // front
 		i.foam.z = (occi.y>>2) & 1; // left
 		i.foam.w = (occi.y>>3) & 1; // right
+		i.foam *= FOAM_SIZE;
 
-		i.foam *= 4.0; // intensity
+		i.foamCorners.x = (occi.y>>4) & 1; // BL
+		i.foamCorners.y = (occi.y>>5) & 1; // FL
+		i.foamCorners.z = (occi.y>>6) & 1; // FR
+		i.foamCorners.w = (occi.y>>7) & 1; // BR
+
 		float sideUV = lerp(uv.z, uv.y, viewSide.y);
 
 		PushCorner(i, o, center, lerp(v4, v6, viewSide.y), float4(0  , 0, sideUV, uv.w));
@@ -159,10 +174,11 @@ void PushVoxel(float3 center, float4 uv, int4 occi, inout TriangleStream<g2f> o)
 
 	// Top face when under water surface
 	if (occTop == 0) {
-		i.flow   = float2(((occi.y>>4) & 3) - 1.0, ((occi.y>>6) & 3) - 1.0);
-		float3 norm = float3(0,1,0);
+		i.flow      = float2(((occi.y>>8) & 3) - 1.0, ((occi.y>>10) & 3) - 1.0);
+		norm = float3(0,1,0);
 		VOXELPLAY_SET_TANGENT_SPACE(float3(norm.y,0,0), norm);
-		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+//		VOXELPLAY_SET_LIGHT(i, worldCenter, norm)
+		VOXELPLAY_SET_FACE_LIGHT(i, worldCenter, norm)
 		i.light  = 1.0;
 
 		PushCorner(i, o, center, v6, float4(0  , 0, uv.z, uv.w));
@@ -179,27 +195,36 @@ void geom(point appdata i[1], inout TriangleStream<g2f> o) {
 	PushVoxel(i[0].vertex.xyz, i[0].uv, (int4)i[0].uv2, o);
 }
 
-    float sum( float3 v ) { return v.x+v.y+v.z; }
-
-
 
 fixed4 frag (g2f i) : SV_Target {
 
-	// Foam
-	const float waveStart = 0.92;
-	fixed foam = saturate( (1.0 - i.uv.x) - waveStart) * i.foam.w;
-	foam = max(foam, saturate( i.uv.x - waveStart) * i.foam.z);
-	foam = max(foam, saturate( (1.0 - i.uv.y) - waveStart) * i.foam.y);
-	foam = max(foam, saturate( i.uv.y - waveStart) * i.foam.x);
+	// Foam at sides (x = right, y = left, z = front, w = back)
+	i.uv.xy = saturate(i.uv.xy);
+	fixed4 foamSides = fixed4(i.foam.w - i.uv.x, i.foam.z - (1.0 - i.uv.x), i.foam.y - i.uv.y, i.foam.x - (1.0 - i.uv.y));
+
+	// Foam at corners
+	fixed foamLeft = FOAM_SIZE - (1.0 - i.uv.x);
+	fixed foamRight = FOAM_SIZE - i.uv.x;
+	fixed foamBack = FOAM_SIZE - (1.0 - i.uv.y);
+	fixed foamForward = FOAM_SIZE - i.uv.y;
+	fixed4 foamCorners1 = fixed4(foamLeft, foamLeft, foamRight, foamRight);
+	fixed4 foamCorners2 = fixed4(foamBack, foamForward, foamForward, foamBack);
+	fixed4 foamCorners  = min(foamCorners1, foamCorners2) * i.foamCorners;
+
+	// combine sides and corner foam
+	fixed4 foam2 = max(foamSides, foamCorners);
+
+	// final foam intensity
+	fixed foam = max( max(foam2.x, foam2.y), max(foam2.z, foam2.w) );
+	foam *= 4.0;
 
 	// Animate
 	i.uv.xy    = frac(i.uv.xy - _Time.yy * i.flow.xy + _Time.xx);
 
 	// Diffuse
 	VOXELPLAY_APPLY_PARALLAX(i);
-
 	fixed4 color   = VOXELPLAY_GET_TEXEL_GEO(i.uv.xyz);
-	color.rgb += foam;
+	color.rgb += saturate(foam);
 
 	VOXELPLAY_APPLY_NORMAL(i);
 

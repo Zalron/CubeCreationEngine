@@ -19,7 +19,7 @@ namespace VoxelPlay {
 		public event OnConsoleEvent OnConsoleNewMessage;
 
 		/// <summary>
-		/// Triggered when a new command is entered by the user
+		/// Triggered whhen a new command is entered by the user
 		/// </summary>
 		public event OnConsoleEvent OnConsoleNewCommand;
 
@@ -73,7 +73,7 @@ namespace VoxelPlay {
 		GameObject canvas, console, status, debug;
 		RawImage selectedItem;
 		GameObject selectedItemPlaceholder;
-		Text consoleText, debugText, statusText, selectedItemName, selectedItemNameShadow, selectedItemQuantityShadow, selectedItemQuantity, inventoryTitleText, fpsText, fpsShadow;
+		Text consoleText, debugText, statusText, selectedItemName, selectedItemNameShadow, selectedItemQuantityShadow, selectedItemQuantity, inventoryTitleText, fpsText, fpsShadow, initText;
 		GameObject inventoryPlaceholder, inventoryItemTemplate, inventoryTitle, initPanel;
 		Transform initProgress;
 		RectTransform rtCanvas;
@@ -179,10 +179,13 @@ namespace VoxelPlay {
 			inventoryUIShouldBeRebuilt = true;
 			initPanel = canvas.transform.Find ("InitPanel").gameObject;
 			initProgress = initPanel.transform.Find ("Box/Progress").transform;
+			initText = initPanel.transform.Find ("StatusText").GetComponent<Text> ();
 		}
 
 		void OnDisable () {
-			inputField.onEndEdit.RemoveAllListeners ();
+			if (inputField != null) {
+				inputField.onEndEdit.RemoveAllListeners ();
+			}
 		}
 
 		void LateUpdate () {
@@ -341,9 +344,9 @@ namespace VoxelPlay {
 			sb.AppendLine (" : Clear the console");
 			AppendValue ("/invoke GameObject MethodName");
 			sb.AppendLine (" : Call method 'MethodName' on target GameObject");
-			AppendValue ("/save filename");
+			AppendValue ("/save [filename]");
 			sb.AppendLine (" : Save current game to 'filename' (only filename, no extension)");
-			AppendValue ("/load filename");
+			AppendValue ("/load [filename]");
 			sb.AppendLine (" : Load a previously saved game");
 			AppendValue ("/build");
 			sb.AppendLine (" : Enable/disable build mode (hotkey: <color=yellow>B</color>)");
@@ -462,6 +465,8 @@ namespace VoxelPlay {
 				elapsed = Time.time - startTime;
 				if (elapsed >= 1f)
 					elapsed = 1f;
+				if (statusBackground == null)
+					yield break;
 				statusBackground.color = Color.Lerp (startColor, env.statusBarBackgroundColor, elapsed);
 				yield return  new WaitForEndOfFrame ();
 			} while(elapsed < 1f);
@@ -479,6 +484,8 @@ namespace VoxelPlay {
 		}
 
 		void UserConsoleCommandHandler () {
+			if (inputField == null)
+				return;
 			string text = inputField.text;
 			bool sanitize = false;
 			for (int k = 0; k < forbiddenCharacters.Length; k++) {
@@ -501,12 +508,16 @@ namespace VoxelPlay {
 				if (!captured && !ProcessConsoleCommand (text)) {
 					env.ShowMessage (text);
 				}
-				inputField.text = "";
-				FocusInputField (); // avoids losing focus
+				if (inputField != null) {
+					inputField.text = "";
+					FocusInputField (); // avoids losing focus
+				}
 			}
 		}
 
 		void FocusInputField () {
+			if (inputField == null)
+				return;
 			inputField.ActivateInputField ();
 			inputField.Select ();
 		}
@@ -578,18 +589,29 @@ namespace VoxelPlay {
 		void ProcessSaveCommand (string command) {
 			string[] args = command.Split (SEPARATOR_SPACE, System.StringSplitOptions.RemoveEmptyEntries);
 			if (args.Length >= 2) {
-				env.saveFilename = args [1];
-				env.SaveGameBinary ();
+				string saveFilename = args [1];
+				if (!string.IsNullOrEmpty (saveFilename)) {
+					env.saveFilename = args [1];
+				}
 			}
+			env.SaveGameBinary ();
 		}
 
 		void ProcessLoadCommand (string command) {
 			string[] args = command.Split (SEPARATOR_SPACE, System.StringSplitOptions.RemoveEmptyEntries);
 			if (args.Length >= 2) {
-				env.saveFilename = args [1];
-				if (!env.LoadGameBinary (false)) {
-					AddMessage ("<color=red>Load error:</color><color=orange> Game '<color=white>" + args [1] + "</color>' could not be loaded.</color>");
+				string saveFilename = args [1];
+				if (!string.IsNullOrEmpty (saveFilename)) {
+					env.saveFilename = args [1];
 				}
+			}
+			// use invoke to ensure all pending UI events are processed before destroying UI, console, etc. and avoid errors with EventSystem, etc.
+			Invoke ("LoadGame", 0.1f);
+		}
+
+		void LoadGame() {
+			if (!env.LoadGameBinary (false)) {
+				AddMessage ("<color=red>Load error:</color><color=orange> Game '<color=white>" + env.saveFilename + "</color>' could not be loaded.</color>");
 			}
 		}
 
@@ -840,13 +862,21 @@ namespace VoxelPlay {
 				int itemIndex = inventoryCurrentPage * itemsPerPage + k;
 				if (k >= inventoryItemsImagesCount)
 					continue;
-				Text quantityShadow = inventoryItemsImages [k].transform.Find ("QuantityShadow").GetComponent<Text> ();
-				Text quantityText = inventoryItemsImages [k].transform.Find ("QuantityShadow/QuantityText").GetComponent<Text> ();
-				inventoryItemsImages [k].gameObject.SetActive (true);
+				RawImage img = inventoryItemsImages [k];
+				if (img == null)
+					continue;
+				Text quantityShadow = img.transform.Find ("QuantityShadow").GetComponent<Text> ();
+				Text quantityText = img.transform.Find ("QuantityShadow/QuantityText").GetComponent<Text> ();
+				img.gameObject.SetActive (true);
 				if (itemIndex < playerItemsCount) {
-					inventoryItemsImages [k].color = Misc.colorWhite;
-					inventoryItemsImages [k].texture = playerItems [itemIndex].item.icon;
-					float quantity = playerItems [itemIndex].quantity;
+					InventoryItem inventoryItem = playerItems [itemIndex];
+					if (inventoryItem.item != null) {
+						img.color = inventoryItem.item.color;
+						img.texture = inventoryItem.item.icon;
+					} else {
+						img.texture = null;
+					}
+					float quantity = inventoryItem.quantity;
 					// show quantity if greater than 1
 					if (quantity <= 0 || env.buildMode) {
 						quantityText.enabled = false;
@@ -859,14 +889,14 @@ namespace VoxelPlay {
 						quantityShadow.enabled = true;
 					}
 					// Mark selected item
-					inventoryItemsImages [k].transform.Find ("SelectedBorder").gameObject.SetActive (k + itemsPerPage * inventoryCurrentPage == selectedItemIndex);
+					img.transform.Find ("SelectedBorder").gameObject.SetActive (k + itemsPerPage * inventoryCurrentPage == selectedItemIndex);
 				} else {
-					inventoryItemsImages [k].texture = Texture2D.whiteTexture;
-					inventoryItemsImages [k].color = new Color (0, 0, 0, 0.25f);
+					img.texture = Texture2D.whiteTexture;
+					img.color = new Color (0, 0, 0, 0.25f);
 					quantityText.enabled = false;
 					quantityShadow.enabled = false;
 					// Hide selected border
-					inventoryItemsImages [k].transform.Find ("SelectedBorder").gameObject.SetActive (false);
+					img.transform.Find ("SelectedBorder").gameObject.SetActive (false);
 				}
 			}
 
@@ -901,10 +931,11 @@ namespace VoxelPlay {
 		/// </summary>
 		/// <param name="item">Item.</param>
 		public void ShowSelectedItem (InventoryItem inventoryItem) {
-			if (selectedItemPlaceholder == null || !env.enableInventory)
+			if (selectedItemPlaceholder == null || env == null || !env.enableInventory)
 				return;
 			ItemDefinition item = inventoryItem.item;
 			selectedItem.texture = item.icon;
+			selectedItem.color = item.color;
 			string txt = item.title;
 			if (string.IsNullOrEmpty (txt) && item.voxelType != null) {
 				txt = item.voxelType.name;
@@ -943,7 +974,7 @@ namespace VoxelPlay {
 
 		#region Initialization Panel
 
-		public void ToggleInitializationPanel (bool visible, float progress = 0) {
+		public void ToggleInitializationPanel (bool visible, string text = "", float progress = 0) {
 			if (!Application.isPlaying)
 				return;
 
@@ -953,6 +984,9 @@ namespace VoxelPlay {
 			if (progress > 1)
 				progress = 1f;
 			initProgress.localScale = new Vector3 (progress, 1, 1);
+			if (visible) {
+				initText.text = text;
+			}
 			initPanel.SetActive (visible);
 		}
 
@@ -993,6 +1027,10 @@ namespace VoxelPlay {
 
 				sbDebug.Append (", Z=");
 				AppendValueDebug (hitChunk.position.z);
+
+				sbDebug.Append (", AboveTerrain=");
+				AppendValueDebug (hitChunk.isAboveSurface);
+
 				int px, py, pz;
 				env.GetVoxelChunkCoordinates (voxelIndex, out px, out py, out pz);
 
@@ -1010,24 +1048,14 @@ namespace VoxelPlay {
 				sbDebug.Append (", Index=");
 				AppendValueDebug (env.lastHitInfo.voxelIndex);
 
-				sbDebug.Append (", AboveTerrain=");
-				AppendValueDebug (hitChunk.isAboveSurface);
+				sbDebug.Append (", Light=");
+				AppendValueDebug (env.lastHitInfo.voxel.lightMesh);
 
 				if (env.lastHitInfo.voxel.typeIndex != 0) {
 					sbDebug.Append (", Type=");
 					AppendValueDebug (env.lastHitInfo.voxel.type.name);
 				}
 			}
-			sbDebug.AppendLine ();
-			sbDebug.Append ("Mesh Jobs: Last=");
-			int v0, v1, v2;
-			env.GetMeshJobsStatus (out v0, out v1, out v2);
-			AppendValueDebug (v0);
-			sbDebug.Append (", CPU Generating=");
-			AppendValueDebug (v1);
-			sbDebug.Append (", GPU Upload=");
-			AppendValueDebug (v2);
-
 			debugText.text = sbDebug.ToString ();
 		}
 

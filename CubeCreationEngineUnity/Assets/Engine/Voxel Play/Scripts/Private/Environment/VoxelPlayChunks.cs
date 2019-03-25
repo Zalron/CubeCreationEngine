@@ -108,6 +108,16 @@ namespace VoxelPlay {
 			return null;
 		}
 
+		bool ChunkExists (int chunkX, int chunkY, int chunkZ) {
+			
+			CachedChunk cachedChunk;
+			int hash = GetChunkHash (chunkX, chunkY, chunkZ);
+			if (cachedChunks.TryGetValue (hash, out cachedChunk)) {
+				return cachedChunk.chunk != null;
+			}
+			return false;
+		}
+
 
 		/// <summary>
 		/// Creates the chunk.
@@ -155,9 +165,6 @@ namespace VoxelPlay {
 			STAGE = 104;
 			if (createEmptyChunk) {
 				chunk.isAboveSurface = CheckIfChunkAboveTerrain (position);
-				if (chunk.isAboveSurface && effectiveGlobalIllumination) {
-					chunk.ClearLightmap (15);
-				}
 			} else {
 				if (OnChunkBeforeCreate != null) {
 					// allows a external function to fill the contents of this new chunk
@@ -176,9 +183,10 @@ namespace VoxelPlay {
 			}
 
 			STAGE = 105;
+			VoxelChunk nchunk;
 
 			if (chunkHasContents || createEmptyChunk) {
-				// Create gameobject
+				// lit chunk if not global illumination
 				if (!effectiveGlobalIllumination) {
 					chunk.ClearLightmap (15);
 				}
@@ -205,35 +213,31 @@ namespace VoxelPlay {
 						if (sendRefresh) {
 							ChunkRequestRefresh (chunk, false, true);
 						}
-
-						// Handle special case for chunks that have no lighting (ie. underground) so neigbhours need to be updated 
-						if ((chunk.inconclusiveNeighbours & CHUNK_IS_INCONCLUSIVE) != 0) {
-							VoxelChunk nchunk = chunk.bottom;
-							if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_TOP) != 0) {
-								ChunkRequestRefresh (nchunk, false, true);
-							}
-							nchunk = chunk.top;
-							if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_BOTTOM) != 0) {
-								ChunkRequestRefresh (nchunk, false, true);
-							}
-							nchunk = chunk.left;
-							if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_RIGHT) != 0) {
-								ChunkRequestRefresh (nchunk, false, true);
-							}
-							nchunk = chunk.right;
-							if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_LEFT) != 0) {
-								ChunkRequestRefresh (nchunk, false, true);
-							}
-							nchunk = chunk.back;
-							if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_FORWARD) != 0) {
-								ChunkRequestRefresh (nchunk, false, true);
-							}
-							nchunk = chunk.forward;
-							if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_BACK) != 0) {
-								ChunkRequestRefresh (nchunk, false, true);
-							}
-						}
-
+                        // Check if neighbours are inconclusive because this chunk was not present 
+                        nchunk = chunk.bottom;
+                        if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_TOP) != 0) {
+							ChunkRequestRefresh(nchunk, true, true);
+                        }
+                        nchunk = chunk.top;
+                        if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_BOTTOM) != 0) {
+							ChunkRequestRefresh(nchunk, true, true);
+                        }
+                        nchunk = chunk.left;
+                        if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_RIGHT) != 0) {
+							ChunkRequestRefresh(nchunk, true, true);
+                        }
+                        nchunk = chunk.right;
+                        if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_LEFT) != 0) {
+							ChunkRequestRefresh(nchunk, true, true);
+                        }
+                        nchunk = chunk.back;
+                        if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_FORWARD) != 0) {
+							ChunkRequestRefresh(nchunk, true, true);
+                        }
+                        nchunk = chunk.forward;
+                        if (nchunk != null && (nchunk.inconclusiveNeighbours & CHUNK_BACK) != 0) {
+							ChunkRequestRefresh(nchunk, true, true);
+                        }
 
 					} else {
 						chunk.renderState = ChunkRenderState.RenderingComplete;
@@ -294,17 +298,13 @@ namespace VoxelPlay {
 			for (int y = -1; y <= 1; y++) {
 				for (int z = -1; z <= 1; z++) {
 					for (int x = -1; x <= 1; x++) {
-						if (y == 0 && x == 0 && z == 0)
-							continue;
 						GetChunkFast (chunkX + x, chunkY + y, chunkZ + z, out neighbour);
-						if (neighbour != null && neighbour != chunk) {
+						if (neighbour != null) {
 							ChunkRequestRefresh (neighbour, true, false);
 						}
 					}
 				}
 			}
-
-			UpdateChunkRR (chunk);
 		}
 
 

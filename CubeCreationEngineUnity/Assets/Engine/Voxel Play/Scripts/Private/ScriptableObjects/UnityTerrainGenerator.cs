@@ -6,6 +6,7 @@ using UnityEngine;
 namespace VoxelPlay {
 
 	[CreateAssetMenu (menuName = "Voxel Play/Terrain Generators/Unity Terrain Generator", fileName = "UnityTerrainGenerator", order = 102)]
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000049142-unity-terrain-to-voxel-world")]
 	public class UnityTerrainGenerator : VoxelPlayTerrainGenerator {
 		public enum TerrainResourceAction {
 			Create,
@@ -59,9 +60,10 @@ namespace VoxelPlay {
 		}
 
 		TerrainHeightInfo[] heights;
+        TerrainData lastTerrainDataLoaded;
 
 
-		public override void Init () {
+		protected override void Init () {
 
 			if (splatSettings == null || splatSettings.Length == 0) {
 				splatSettings = new TerrainVoxelDefinitionMapping[64];
@@ -91,11 +93,18 @@ namespace VoxelPlay {
 				}
 			}
 
-			#endif
+#endif
 
-			if (terrainData == null)
-				return;
-			maxHeight = terrainData.size.y;
+            if (terrainData == null) {
+                return;
+            }
+
+             if (lastTerrainDataLoaded != null && lastTerrainDataLoaded == terrainData && heights!=null && heights.Length>0) {
+                return;
+            }
+
+            lastTerrainDataLoaded = terrainData;
+            maxHeight = terrainData.size.y;
 
 			int th = terrainData.heightmapHeight;
 			int tw = terrainData.heightmapWidth;
@@ -215,15 +224,9 @@ namespace VoxelPlay {
 			float fz = h / sz;
 
 			int tx = (int)((x + sx / 2) * fx);
-			if (tx < 0)
-				tx = 0;
-			else if (tx >= w)
-				tx = w - 1;
+            if (tx < 0 || tx >= w) return -1;
 			int ty = (int)((z + sz / 2) * fz);
-			if (ty < 0)
-				ty = 0;
-			else if (ty >= h)
-				ty = h - 1;
+            if (ty < 0 || ty >= h) return -1;
 			return ty * w + tx;
 		}
 
@@ -235,19 +238,16 @@ namespace VoxelPlay {
 		/// <param name="altitude">Altitude.</param>
 		/// <param name="moisture">Moisture.</param>
 		public override void GetHeightAndMoisture (float x, float z, out float altitude, out float moisture) {
-
-			if (!env.applicationIsPlaying) {
-				altitude = 0;
-				moisture = 0;
-				return;
-			}
-
 			int heightIndex = GetHeightIndex (x, z);
-			altitude = heights [heightIndex].altitude;
-			moisture = 0;
-		}
+            if (heightIndex >= 0) {
+                altitude = heights[heightIndex].altitude;
+            } else {
+                altitude = 0;
+            }
+            moisture = 0;
+        }
 
-		/// <summary>
+        /// <summary>
 		/// Paints the terrain inside the chunk defined by its central "position"
 		/// </summary>
 		/// <returns><c>true</c>, if terrain was painted, <c>false</c> otherwise.</returns>
@@ -288,6 +288,7 @@ namespace VoxelPlay {
 					}
 
 					int hindex = GetHeightIndex (pos.x, pos.z);
+                    if (hindex < 0) continue;
 					VoxelDefinition vd = heights [hindex].terrainVoxelTop;
 					if ((object)vd == null)
 						continue;
@@ -345,7 +346,7 @@ namespace VoxelPlay {
 					vd = heights [hindex].terrainVoxelDirt;
 					while (voxelIndex >= 0) {
 						if (voxels [voxelIndex].hasContent == 0) {
-							voxels [voxelIndex].SetFast (vd, 15, 1);
+							voxels [voxelIndex].SetFast (vd, 15);
 						}
 						voxelIndex -= ONE_Y_ROW;
 					}

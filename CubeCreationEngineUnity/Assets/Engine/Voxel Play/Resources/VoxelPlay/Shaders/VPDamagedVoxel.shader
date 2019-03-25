@@ -5,7 +5,6 @@
 		_MainTex ("Texture", 2D) = "white" {}
 		_Color ("Color", Color) = (1,1,1,0.5)
 		_VoxelLight ("Voxel Ambient Light", Float) = 1
-		_VPAmbientLight ("Ambient Light", Float) = 0
 	}
 	SubShader
 	{
@@ -23,6 +22,7 @@
 			#pragma multi_compile _ VERTEXLIGHT_ON
 			#include "UnityCG.cginc"
 			#include "UnityLightingCommon.cginc"
+			#include "VPCommonVertexModifier.cginc"
 
 			sampler2D _MainTex;
 			fixed3 _Color;
@@ -43,6 +43,10 @@
 			v2f vert (appdata_base v)
 			{
 				v2f o;
+
+                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+				VOXELPLAY_MODIFY_VERTEX(v.vertex, worldPos)
+
 				o.vertex = UnityObjectToClipPos(v.vertex);
 				o.uv = v.texcoord.xy;
  				// Daylight
@@ -52,7 +56,6 @@
                 // factor in the light color
                 o.diff = max(saturate(nl), _VPAmbientLight) * _VoxelLight * _LightColor0.rgb * _Color;
 				#if defined(VERTEXLIGHT_ON)
-                float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 o.vertexLightColor = Shade4PointLights(unity_4LightPosX0, unity_4LightPosY0, unity_4LightPosZ0,unity_LightColor[0].rgb, unity_LightColor[1].rgb,unity_LightColor[2].rgb, unity_LightColor[3].rgb,unity_4LightAtten0, worldPos, worldNormal);
                 #endif
 				return o;

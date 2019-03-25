@@ -24,7 +24,7 @@ namespace VoxelPlay {
 		public bool saveFileIsLoaded;
 
 
-		const byte SAVE_FILE_CURRENT_FORMAT = 5;
+		const byte SAVE_FILE_CURRENT_FORMAT = 6;
 		bool isLoadingGame;
 
 		public bool LoadGameBinary (bool firstLoad, bool preservePlayerPosition = false) {
@@ -61,6 +61,9 @@ namespace VoxelPlay {
 					break;
 				case 5: 
 					LoadGameBinaryFileFormat_5 (br, preservePlayerPosition);
+					break;
+				case 6: 
+					LoadGameBinaryFileFormat_6 (br, preservePlayerPosition);
 					break;
 				default:
 					throw new ApplicationException ("LoadGame() does not support this file format.");
@@ -116,7 +119,7 @@ namespace VoxelPlay {
 												// In Build, try to load the saved game from application data path. If there's none, try to load a default saved game from Resources.
 			string path = Application.persistentDataPath + "/VoxelPlay/" + saveFilename + SAVEGAMEDATA_EXTENSION;
 												if (File.Exists(path)) {
-												return File.ReadAllBytes(path);
+			return File.ReadAllBytes (path);
 
 												} else {
 																string resource = "Worlds/" + world.name + "/SavedGames/" + saveFilename;
@@ -148,7 +151,7 @@ namespace VoxelPlay {
 				string filename = GetFullFilename ();
 				FileStream fs = new FileStream (filename, FileMode.Create);
 				BinaryWriter bw = new BinaryWriter (fs, Encoding.UTF8);
-				SaveGameBinaryFormat_5 (bw);
+				SaveGameBinaryFormat_6 (bw);
 				bw.Close ();
 				fs.Close ();
 				ShowMessage ("<color=green>Game saved successfully in </color><color=yellow>" + filename + "</color>");
@@ -166,7 +169,7 @@ namespace VoxelPlay {
 		public byte[] SaveGameToByteArray () {
 			MemoryStream ms = new MemoryStream ();
 			BinaryWriter bw = new BinaryWriter (ms, Encoding.UTF8);
-			SaveGameBinaryFormat_5 (bw);
+			SaveGameBinaryFormat_6 (bw);
 			bw.Close ();
 			return ms.ToArray ();
 		}
@@ -233,6 +236,9 @@ namespace VoxelPlay {
 					break;
 				case 5: 
 					LoadGameBinaryFileFormat_5 (br, preservePlayerPosition);
+					break;
+				case 6: 
+					LoadGameBinaryFileFormat_6 (br, preservePlayerPosition);
 					break;
 				default:
 					throw new ApplicationException ("LoadGameFromArray() does not support this file format.");

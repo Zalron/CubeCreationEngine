@@ -1,42 +1,95 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace VoxelPlay
-{
+namespace VoxelPlay {
 
-	public enum ItemCategory
-	{
+	public enum ItemCategory {
 		Voxel = 0,
-		Torch = 1
+		Torch = 1,
+		Model = 2,
+		General = 10
+	}
+
+
+	[Serializable]
+	public struct ItemProperty {
+		public string name;
+		public string value;
 	}
 
 	[CreateAssetMenu (menuName = "Voxel Play/Item Definition", fileName = "ItemDefinition", order = 104)]
-	public partial class ItemDefinition : ScriptableObject
-	{
+	[HelpURL("https://kronnect.freshdesk.com/support/solutions/articles/42000051366-item-definitions")]
+	public partial class ItemDefinition : ScriptableObject {
 		public string title;
 		public ItemCategory category;
 
+		[Tooltip("Voxel Definition associated to this item.")]
 		public VoxelDefinition voxelType;
 
-		[Tooltip("Icon used in the inventory panel.")]
+		[Tooltip("Model Definition associated to this item.")]
+		public ModelDefinition model;
+
+		[Tooltip ("Icon used in the inventory panel.")]
 		public Texture2D icon;
 
-		[Tooltip("Prefab used when this item can be placed on the scene as a normal gameobject (ie. a torch)")]
+		[Tooltip("Optioanl tint color for the icon.")]
+		public Color32 color = Misc.color32White;
+
+		[Tooltip ("Prefab used when this item can be placed on the scene as a normal gameobject (ie. a torch)")]
 		public GameObject prefab;
 
-		[Tooltip("Resistance points for this item.")]
-		public byte resistancePoints;
+		[Tooltip ("Sound played when player attacks using this item")]
+		public AudioClip useSound;
 
-		[Tooltip("Damage what produces when player carries this weapon or item. A value of 0 means that current hitDamage won't be changed.")]
-		public int hitDamage = 0;
-
-		[Tooltip("Hit delay for this weapon or item. A value of 0 means that current hitDelay won't be changed.")]
-		public float hitDelay = 0;
-
-		[Tooltip ("Sound played when item is placed in the scene")]
+		[Tooltip ("Sound played when item is picked from the scene")]
 		public AudioClip pickupSound;
 
+		[Tooltip ("Custom item properties.")]
+		public ItemProperty[] properties;
+
+		public T GetPropertyValue<T> (string name, T defaultValue) {
+			if (properties == null)
+				return defaultValue;
+			name = name.ToUpper ();
+			for (int k = 0; k < properties.Length; k++) {
+				if (properties [k].name.ToUpper().Equals (name)) {
+					switch (Type.GetTypeCode (typeof(T))) {
+					case TypeCode.Int32:
+						return (T)(object)Convert.ToInt32 (properties [k].value, System.Globalization.CultureInfo.InvariantCulture);
+					case TypeCode.String:
+						return (T)(object)properties [k].value;
+					case TypeCode.Single:
+						return (T)(object)Convert.ToSingle (properties [k].value, System.Globalization.CultureInfo.InvariantCulture);
+					default:
+						Debug.LogError ("Only int, float or string types are supported.");
+						break;
+					}
+					break;
+				}
+			}
+			return defaultValue;
+		}
+
+
+		public void SetPropertyValue (string name, string value) {
+			if (properties == null) {
+				properties = new ItemProperty[0];
+			}
+			string nameCheck = name.ToUpper ();
+			for (int k = 0; k < properties.Length; k++) {
+				if (properties [k].name.ToUpper().Equals (nameCheck)) {
+					properties [k].value = value;
+					return;
+				}
+			}
+			int length = properties.Length;
+			Array.Resize (ref properties, length + 1);
+			properties [length].name = name;
+			properties [length].value = value;
+
+		}
 	}
 
 }

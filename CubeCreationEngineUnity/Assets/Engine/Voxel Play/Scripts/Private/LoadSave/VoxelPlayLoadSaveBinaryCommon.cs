@@ -12,25 +12,37 @@ namespace VoxelPlay {
 
 	public partial class VoxelPlayEnvironment : MonoBehaviour {
 
-		List<string> saveVoxelDefinitionList;
-		Dictionary<VoxelDefinition, int> saveVoxelDefinitionDict;
+		List<string> saveVoxelDefinitionsList;
+		Dictionary<VoxelDefinition, int> saveVoxelDefinitionsDict;
 		Dictionary<Vector3, Vector3> saveVoxelCustomRotations;
+		List<string> saveItemDefinitionsList;
+		Dictionary<ItemDefinition, int> saveItemDefinitionsDict;
 
 		void InitSaveGameStructs () {
-			if (saveVoxelDefinitionList == null) {
-				saveVoxelDefinitionList = new List<string> (100);
+			if (saveVoxelDefinitionsList == null) {
+				saveVoxelDefinitionsList = new List<string> (100);
 			} else {
-				saveVoxelDefinitionList.Clear ();
+				saveVoxelDefinitionsList.Clear ();
 			}
-			if (saveVoxelDefinitionDict == null) {
-				saveVoxelDefinitionDict = new Dictionary<VoxelDefinition, int> (100);
+			if (saveVoxelDefinitionsDict == null) {
+				saveVoxelDefinitionsDict = new Dictionary<VoxelDefinition, int> (100);
 			} else {
-				saveVoxelDefinitionDict.Clear ();
+				saveVoxelDefinitionsDict.Clear ();
 			}
 			if (saveVoxelCustomRotations == null) {
 				saveVoxelCustomRotations = new Dictionary<Vector3,Vector3> ();
 			} else {
 				saveVoxelCustomRotations.Clear ();
+			}
+			if (saveItemDefinitionsList == null) {
+				saveItemDefinitionsList = new List<string> (100);
+			} else {
+				saveItemDefinitionsList.Clear ();
+			}
+			if (saveItemDefinitionsDict == null) {
+				saveItemDefinitionsDict = new Dictionary<ItemDefinition, int> (100);
+			} else {
+				saveItemDefinitionsDict.Clear ();
 			}
 		}
 

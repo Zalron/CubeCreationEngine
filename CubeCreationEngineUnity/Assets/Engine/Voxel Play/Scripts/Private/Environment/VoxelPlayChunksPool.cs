@@ -80,10 +80,13 @@ namespace VoxelPlay {
 				if (++chunksPoolCurrentIndex >= chunksPool.Length - 1) {
 					chunksPoolCurrentIndex = chunksPoolFirstReusableIndex;
 				}
+
 				VoxelChunk chunk = chunksPool [chunksPoolCurrentIndex];
+
 				// if chunk has been modified or chunk is marked as non reusable, skip it
 				if (chunk.modified || chunk.cannotBeReused)
 					continue;
+				
 				// if chunk is too near from desired position, skip it
 				float dx = position.x - chunk.position.x;
 				float dy = position.y - chunk.position.y;
@@ -91,12 +94,22 @@ namespace VoxelPlay {
 				if (dx >= -minDistance && dx <= minDistance && dy >= -minDistance && dy <= minDistance && dz >= -minDistance && dz <= minDistance)
 					continue;
 				lastGood = chunksPoolCurrentIndex;
+
 				// if chunk is within visible distance, skip it
 				dx = currentCamPos.x - chunk.position.x;
 				dy = currentCamPos.y - chunk.position.y;
 				dz = currentCamPos.z - chunk.position.z;
 				if (dx >= -visibleDistance && dx <= visibleDistance && dy >= -visibleDistance && dy <= visibleDistance && dz >= -visibleDistance && dz <= visibleDistance)
 					continue;
+				
+				// check event confirmation
+				bool canUnload = true;
+				if (OnChunkUnload != null) {
+					OnChunkUnload (chunk, ref canUnload);
+					if (!canUnload)
+						continue;
+				}
+
 				// chunk seems good, pick it up!
 				valid = true;
 				break;
@@ -159,11 +172,16 @@ namespace VoxelPlay {
 			chunk.mf.sharedMesh = null;
 			chunk.mr = chunkGO.GetComponent<MeshRenderer> ();
 			chunk.mr.enabled = false;
-			chunk.mr.receiveShadows = enableShadows;
-			if (enableShadows) {
-				chunk.mr.shadowCastingMode = ShadowCastingMode.On;
-			} else {
+			if (draftModeActive && !Application.isPlaying) {
+				chunk.mr.receiveShadows = false;
 				chunk.mr.shadowCastingMode = ShadowCastingMode.Off;
+			} else {
+				chunk.mr.receiveShadows = enableShadows;
+				if (enableShadows) {
+					chunk.mr.shadowCastingMode = ShadowCastingMode.On;
+				} else {
+					chunk.mr.shadowCastingMode = ShadowCastingMode.Off;
+				}
 			}
 			chunk.mc = chunkGO.GetComponent<MeshCollider> ();
 			return chunk;

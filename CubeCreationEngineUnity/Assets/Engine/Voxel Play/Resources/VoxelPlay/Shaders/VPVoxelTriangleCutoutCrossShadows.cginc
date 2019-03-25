@@ -1,5 +1,4 @@
-﻿#include "UnityCG.cginc"
-#include "AutoLight.cginc"
+﻿#include "VPCommon.cginc"
 
 struct appdata {
 	float4 vertex   : POSITION;
@@ -16,11 +15,11 @@ struct vertexInfo {
 	float4 vertex;
 };
 
-UNITY_DECLARE_TEX2DARRAY(_MainTex); 
-
 v2f vert (appdata v) {
 	v2f o;
 	float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldPos)
+
 	float disp = sin(worldPos.x + _Time.w) * 0.01;
 	v.vertex.x += disp * v.uv.y;
 

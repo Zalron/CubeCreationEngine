@@ -14,8 +14,8 @@ namespace VoxelPlay
 
 		[Header ("Crosshair")]
 		public float crosshairScale = 0.1f;
-		public float crosshairOnTargetAnimationSpeed = 0.75f;
-		public float crosshairOnTargetAnimationScale = 0.2f;
+		public float targetAnimationSpeed = 0.75f;
+		public float targetAnimationScale = 0.2f;
 		public Color crosshairOnTargetColor = Color.yellow;
 		public Color crosshairNormalColor = Color.white;
 		[Tooltip ("Crosshair will change over a reachable voxel.")]
@@ -66,7 +66,7 @@ namespace VoxelPlay
 			};
 		}
 
-		void ResetCrosshairPosition ()
+		public void ResetCrosshairPosition ()
 		{
 			UpdateCrosshairScreenPosition ();
 			crosshair.localRotation = Misc.quaternionZero;
@@ -138,7 +138,7 @@ namespace VoxelPlay
 				}
 			}
 			if (crosshairOnBlock) {
-				crosshair.localScale = Misc.vector3one * (crosshairScale * (1f - crosshairOnTargetAnimationScale * 0.5f + Mathf.PingPong (Time.time * crosshairOnTargetAnimationSpeed, crosshairOnTargetAnimationScale)));
+				crosshair.localScale = Misc.vector3one * (crosshairScale * (1f - targetAnimationScale * 0.5f + Mathf.PingPong (Time.time * targetAnimationSpeed, targetAnimationScale)));
 				if (voxelHighlight) {
 					env.VoxelHighlight (crosshairHitInfo, voxelHighlightColor, voxelHighlightEdge);
 				}

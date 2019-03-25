@@ -145,6 +145,9 @@ namespace VoxelPlay {
 					int minz = iz - (caveBorder++ & 5);
 					int maxy = iy + (caveBorder++ & 5);
 					int maxz = iz + (caveBorder++ & 5);
+					int mx = (maxx + minx) / 2;
+					int my = (maxy + miny) / 2;
+					int mz = (maxz + minz) / 2;
 
 					VoxelChunk chunk = null;
 					int lastChunkX = int.MinValue, lastChunkY = int.MinValue, lastChunkZ = int.MinValue;
@@ -157,8 +160,15 @@ namespace VoxelPlay {
 							int pz = (int)(z - chunkZ * 16);
 							int voxelIndexZ = voxelIndexY + pz * ONE_Z_ROW;
 							for (int x = minx; x < maxx; x++) {
+								int dx = x - mx;
+								int dy = y - my;
+								int dz = z - mz;
+								if (dx * dx + dy * dy + dz * dz > 23) {
+									continue;
+								}
 								int chunkX = FastMath.FloorToInt (x / 16f);
 								if (chunkX != lastChunkX || chunkY != lastChunkY || chunkZ != lastChunkZ) {
+
 									lastChunkX = chunkX;
 									lastChunkY = chunkY;
 									lastChunkZ = chunkZ;
@@ -172,7 +182,7 @@ namespace VoxelPlay {
 										break;
 									}
 									// mark the chunk as modified by this detail generator
-									SetChunkIsDirty(chunk);
+									SetChunkIsDirty (chunk);
 								}
 
 								int px = (int)(x - chunkX * 16);

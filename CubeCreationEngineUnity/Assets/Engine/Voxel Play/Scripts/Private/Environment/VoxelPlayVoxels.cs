@@ -16,7 +16,10 @@ namespace VoxelPlay {
 		public VoxelDefinition[] voxelDefinitions;
 		public int voxelDefinitionsCount;
 
+		GameObject defaultVoxelPrefab;
 		List<VoxelChunk> voxelPlaceFastAffectedChunks;
+		GameObject voxelHighlightGO;
+
 
 		float[] collapsingOffsets = new float[] {
 			0, 1, 0,
@@ -59,7 +62,7 @@ namespace VoxelPlay {
 			VoxelDestroyFastSingle (chunk, voxelIndex);
 
 			// Update lightmap and renderers
-			RefreshNineChunks (chunk);
+			UpdateChunkRR (chunk);
 
 			// Force rebuild neighbour meshes if destroyed voxel is on a border
 			RebuildNeighbours(chunk, voxelIndex);
@@ -94,6 +97,7 @@ namespace VoxelPlay {
 		/// <param name="position">Position.</param>
 		/// <param name="voxel">Voxel.</param>
 		void VoxelPlaceFast (Vector3 position, VoxelDefinition voxelType, out VoxelChunk chunk, out int voxelIndex, Color32 tintColor, float amount = 1f, int rotation = 0) {
+
 			VoxelSingleSet (position, voxelType, out chunk, out voxelIndex, tintColor);
 
 			// Apply rotation
@@ -110,7 +114,7 @@ namespace VoxelPlay {
 			chunk.modified = true;
 
 			// Update neighbours
-			RefreshNineChunks (chunk);
+			UpdateChunkRR (chunk);
 
 			// Triggers event
 			if (OnChunkChanged != null) {
@@ -141,6 +145,11 @@ namespace VoxelPlay {
 		/// <param name="voxelIndex">Voxel index.</param>
 		void VoxelSingleSet (Vector3 position, VoxelDefinition voxelType, out VoxelChunk chunk, out int voxelIndex, Color32 tintColor) {
 			if (GetVoxelIndex (position, out chunk, out voxelIndex)) {
+				if (OnVoxelBeforePlace != null) {
+					OnVoxelBeforePlace (position, chunk, voxelIndex, ref voxelType, ref tintColor);
+					if (voxelType == null)
+						return;
+				}
 				chunk.voxels [voxelIndex].Set (voxelType, tintColor);
 			}
 		}
@@ -215,7 +224,7 @@ namespace VoxelPlay {
 				vdDyn.footfalls = vd.footfalls;
 				vdDyn.destructionSound = vd.destructionSound;
 				vdDyn.canBeCollected = vd.canBeCollected;
-				vdDyn.dropItem = GetItemByType (ItemCategory.Voxel, vd);
+				vdDyn.dropItem = GetItemDefinition (ItemCategory.Voxel, vd);
 				vdDyn.buildSound = vd.buildSound;
 				vdDyn.navigatable = true;
 				vdDyn.windAnimation = false;
@@ -302,6 +311,16 @@ namespace VoxelPlay {
 			}
 		}
 
+		/// <summary>
+		/// Returns the default voxel prefab (usually a cube; the prefab is located in Defaults folder)
+		/// </summary>
+		/// <returns>The default voxel prefab.</returns>
+		GameObject GetDefaultVoxelPrefab() {
+			if (defaultVoxelPrefab == null) {
+				defaultVoxelPrefab = Resources.Load<GameObject> ("VoxelPlay/Defaults/DefaultModel/Cube");
+			}
+			return defaultVoxelPrefab;
+		}
 
 		#endregion
 

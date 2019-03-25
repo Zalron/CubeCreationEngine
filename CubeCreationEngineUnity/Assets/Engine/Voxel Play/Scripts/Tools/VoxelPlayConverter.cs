@@ -27,6 +27,7 @@ namespace VoxelPlay {
 		struct Cuboid {
 			public Bounds bounds;
 			public Color32 color;
+			public int textureIndex;
 		}
 
 		struct Face {
@@ -35,13 +36,15 @@ namespace VoxelPlay {
 			public Vector3[] vertices;
 			public Vector3[] normals;
 			public Color32 color;
+			public int textureIndex;
 
-			public Face (Vector3 center, Vector3 size, Vector3[] vertices, Vector3[] normals, Color32 color) {
+			public Face (Vector3 center, Vector3 size, Vector3[] vertices, Vector3[] normals, Color32 color, int textureIndex) {
 				this.center = center;
 				this.size = size;
 				this.vertices = vertices;
 				this.normals = normals;
 				this.color = color;
+				this.textureIndex = textureIndex;
 			}
 
 
@@ -122,6 +125,9 @@ namespace VoxelPlay {
 		static Vector3[] normalsDown = new Vector3[] {
 			Misc.vector3down, Misc.vector3down, Misc.vector3down, Misc.vector3down
 		};
+		static Vector3[] faceUVs = new Vector3[] {
+			new Vector3 (0, 0, 0), new Vector3 (0, 1, 0), new Vector3 (1, 0, 0), new Vector3 (1, 1, 0)
+		};
 
 
 		public static ModelDefinition GetModelDefinition (VoxelDefinition voxelTemplate, ColorBasedModelDefinition model, bool ignoreOffset, ColorToVoxelMap colorMap = null) {
@@ -164,13 +170,14 @@ namespace VoxelPlay {
 			return md;
 		}
 
-		public static ColorToVoxelMap GetColorToVoxelMapDefinition(ColorBasedModelDefinition model) {
+		public static ColorToVoxelMap GetColorToVoxelMapDefinition (ColorBasedModelDefinition model) {
 			ColorToVoxelMap mapping = ScriptableObject.CreateInstance<ColorToVoxelMap> ();
-			List<Color32> uniqueColors = new List<Color32>();
+			List<Color32> uniqueColors = new List<Color32> ();
 			Color32 prevColor = Misc.color32Transparent;
-			for (int k=0;k<model.colors.Length;k++) {
-				Color32 color = model.colors[k];
-				if (color.a==0 || (color.r == prevColor.r && color.g == prevColor.g && color.b==prevColor.b && color.a == prevColor.a)) continue;
+			for (int k = 0; k < model.colors.Length; k++) {
+				Color32 color = model.colors [k];
+				if (color.a == 0 || (color.r == prevColor.r && color.g == prevColor.g && color.b == prevColor.b && color.a == prevColor.a))
+					continue;
 				if (!uniqueColors.Contains (color)) {
 					uniqueColors.Add (color);
 				}
@@ -186,12 +193,18 @@ namespace VoxelPlay {
 
 		static List<Vector3> vertices = new List<Vector3> ();
 		static List<int> indices = new List<int> ();
+		static List<Vector3> uvs = new List<Vector3> ();
 		static List<Vector3> normals = new List<Vector3> ();
 		static List<Color32> meshColors = new List<Color32> ();
 		static Cuboid[] cuboids = new Cuboid[128];
 		static Material litMat;
 
-		public static GameObject GenerateVoxelObject(Color32[] colors, int sizeX, int sizeY, int sizeZ, Vector3 offset, Vector3 scale) {
+		public static GameObject GenerateVoxelObject (Color32[] colors, int sizeX, int sizeY, int sizeZ, Vector3 offset, Vector3 scale) {
+			return GenerateVoxelObject (colors, null, sizeX, sizeY, sizeZ, offset, scale);
+		}
+
+
+		public static GameObject GenerateVoxelObject (Color32[] colors, int[] textureIndices, int sizeX, int sizeY, int sizeZ, Vector3 offset, Vector3 scale) {
 
 			int index;
 			int ONE_Y_ROW = sizeZ * sizeX;
@@ -208,11 +221,12 @@ namespace VoxelPlay {
 						index = posy + posz + x;
 						Color32 color = colors [index];
 						if (color.a > 0) {
-							center.x = x - sizeX / 2 - 0.5f + offset.x;
-							center.y = y + 0.5f + offset.y;
-							center.z = z - sizeZ / 2 - 0.5f + offset.z;
+							center.x = x - sizeX / 2f + 0.5f;
+							center.y = y + 0.5f;
+							center.z = z - sizeZ / 2f + 0.5f;
 							cuboid.bounds = new Bounds (center, Misc.vector3one);
 							cuboid.color = color;
+							cuboid.textureIndex = textureIndices != null ? textureIndices [index] : 0;
 							if (cuboidsCount >= cuboids.Length) {
 								Cuboid[] newCuboids = new Cuboid[cuboidsCount * 2];
 								System.Array.Copy (cuboids, newCuboids, cuboids.Length);
@@ -234,7 +248,7 @@ namespace VoxelPlay {
 					for (int j = k + 1; j < cuboidsCount; j++) {
 						if (cuboids [j].color.a == 0)
 							continue;
-						if (cuboids [k].color.r == cuboids [j].color.r && cuboids [k].color.b == cuboids [j].color.b && cuboids [k].color.g == cuboids [j].color.g) {
+						if (cuboids [k].color.r == cuboids [j].color.r && cuboids [k].color.g == cuboids [j].color.g && cuboids [k].color.b == cuboids [j].color.b && cuboids [k].textureIndex == cuboids [j].textureIndex) {
 							bool touching = false;
 							Bounds f1 = cuboids [k].bounds;
 							Bounds f2 = cuboids [j].bounds;
@@ -302,17 +316,17 @@ namespace VoxelPlay {
 				Vector3 min = cuboids [k].bounds.min;
 				Vector3 max = cuboids [k].bounds.max;
 				Vector3 size = cuboids [k].bounds.size;
-				Face top = new Face (new Vector3 ((min.x + max.x) * 0.5f, max.y, (min.z + max.z) * 0.5f), new Vector3 (size.x, 0, size.z), faceVerticesTop, normalsUp, cuboids [k].color);
+				Face top = new Face (new Vector3 ((min.x + max.x) * 0.5f, max.y, (min.z + max.z) * 0.5f), new Vector3 (size.x, 0, size.z), faceVerticesTop, normalsUp, cuboids [k].color, cuboids [k].textureIndex);
 				RemoveDuplicateOrAddFace (faces, top);
-				Face bottom = new Face (new Vector3 ((min.x + max.x) * 0.5f, min.y, (min.z + max.z) * 0.5f), new Vector3 (size.x, 0, size.z), faceVerticesBottom, normalsDown, cuboids [k].color);
+				Face bottom = new Face (new Vector3 ((min.x + max.x) * 0.5f, min.y, (min.z + max.z) * 0.5f), new Vector3 (size.x, 0, size.z), faceVerticesBottom, normalsDown, cuboids [k].color, cuboids [k].textureIndex);
 				RemoveDuplicateOrAddFace (faces, bottom);
-				Face left = new Face (new Vector3 (min.x, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f), new Vector3 (0, size.y, size.z), faceVerticesLeft, normalsLeft, cuboids [k].color);
+				Face left = new Face (new Vector3 (min.x, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f), new Vector3 (0, size.y, size.z), faceVerticesLeft, normalsLeft, cuboids [k].color, cuboids [k].textureIndex);
 				RemoveDuplicateOrAddFace (faces, left);
-				Face right = new Face (new Vector3 (max.x, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f), new Vector3 (0, size.y, size.z), faceVerticesRight, normalsRight, cuboids [k].color);
+				Face right = new Face (new Vector3 (max.x, (min.y + max.y) * 0.5f, (min.z + max.z) * 0.5f), new Vector3 (0, size.y, size.z), faceVerticesRight, normalsRight, cuboids [k].color, cuboids [k].textureIndex);
 				RemoveDuplicateOrAddFace (faces, right);
-				Face back = new Face (new Vector3 ((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, min.z), new Vector3 (size.x, size.y, 0), faceVerticesBack, normalsBack, cuboids [k].color);
+				Face back = new Face (new Vector3 ((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, min.z), new Vector3 (size.x, size.y, 0), faceVerticesBack, normalsBack, cuboids [k].color, cuboids [k].textureIndex);
 				RemoveDuplicateOrAddFace (faces, back);
-				Face forward = new Face (new Vector3 ((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, max.z), new Vector3 (size.x, size.y, 0), faceVerticesForward, normalsForward, cuboids [k].color);
+				Face forward = new Face (new Vector3 ((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f, max.z), new Vector3 (size.x, size.y, 0), faceVerticesForward, normalsForward, cuboids [k].color, cuboids [k].textureIndex);
 				RemoveDuplicateOrAddFace (faces, forward);
 			}
 
@@ -327,11 +341,13 @@ namespace VoxelPlay {
 				Face face = faces [k];
 				Vector3 faceVertex;
 				for (int j = 0; j < 4; j++) {
-					faceVertex.x = (face.center.x + face.vertices [j].x * face.size.x) * scale.x;
-					faceVertex.y = (face.center.y + face.vertices [j].y * face.size.y) * scale.y;
-					faceVertex.z = (face.center.z + face.vertices [j].z * face.size.z) * scale.z;
+					faceVertex.x = (face.center.x + face.vertices [j].x * face.size.x) * scale.x + offset.x;
+					faceVertex.y = (face.center.y + face.vertices [j].y * face.size.y) * scale.y + offset.y;
+					faceVertex.z = (face.center.z + face.vertices [j].z * face.size.z) * scale.z + offset.z;
 					vertices.Add (faceVertex);
 					meshColors.Add (face.color);
+					faceUVs [j].z = face.textureIndex;
+					uvs.Add (faceUVs [j]);
 				}
 				normals.AddRange (face.normals);
 				indices.Add (index);
@@ -344,6 +360,9 @@ namespace VoxelPlay {
 
 			Mesh mesh = new Mesh ();
 			mesh.SetVertices (vertices);
+			if (textureIndices != null) {
+				mesh.SetUVs (0, uvs);
+			}
 			mesh.SetNormals (normals);
 			mesh.SetTriangles (indices, 0);
 			mesh.SetColors (meshColors);
@@ -354,7 +373,7 @@ namespace VoxelPlay {
 			mf.mesh = mesh;
 			MeshRenderer mr = obj.AddComponent<MeshRenderer> ();
 			if (litMat == null) {
-				litMat = GameObject.Instantiate<Material>(Resources.Load<Material> ("VoxelPlay/Materials/VP Model VertexLit"));
+				litMat = GameObject.Instantiate<Material> (Resources.Load<Material> ("VoxelPlay/Materials/VP Model VertexLit"));
 			} 
 			mr.sharedMaterial = litMat;
 
@@ -363,10 +382,36 @@ namespace VoxelPlay {
 
 		static void RemoveDuplicateOrAddFace (List<Face> faces, Face face) {
 			int index = faces.IndexOf (face);
-			if (index >= 0)
+			if (index >= 0) {
 				faces.RemoveAt (index);
-			else
+			} else {
 				faces.Add (face);
+			}
+		}
+
+
+		/// <summary>
+		/// Generates a gameobject from a model definition. Currently it does not convert textures.
+		/// </summary>
+		public static GameObject GenerateVoxelObject (ModelDefinition modelDefinition, Vector3 offset, Vector3 scale) {
+
+			int sizeY = modelDefinition.sizeY;
+			int sizeZ = modelDefinition.sizeZ;
+			int sizeX = modelDefinition.sizeX;
+			Color32[] colors = new Color32[sizeY * sizeZ * sizeX];
+			int[] textureIndices = new int[colors.Length];
+			for (int k = 0; k < modelDefinition.bits.Length; k++) {
+				if (modelDefinition.bits [k].isEmpty) {
+					continue;
+				}
+				int voxelIndex = modelDefinition.bits [k].voxelIndex;
+				if (voxelIndex >= 0 && voxelIndex < colors.Length) {
+					VoxelDefinition vd = modelDefinition.bits [k].voxelDefinition;
+					colors [voxelIndex] = modelDefinition.bits [k].finalColor;
+					textureIndices [voxelIndex] = vd.textureIndexSide;
+				}
+			}
+			return GenerateVoxelObject (colors, textureIndices, sizeX, sizeY, sizeZ, offset, scale);
 		}
 
 	}

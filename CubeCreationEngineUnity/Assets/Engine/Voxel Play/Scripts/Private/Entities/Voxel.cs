@@ -14,7 +14,7 @@ namespace VoxelPlay {
 		/// <summary>
 		/// Voxel definition index in voxelDefinitions list
 		/// </summary>
-		public short typeIndex;
+		public ushort typeIndex;
 
 		public bool isEmpty {
 			get { return typeIndex == 0; }
@@ -199,7 +199,7 @@ namespace VoxelPlay {
 					this._flags = 0;
 					break;
 				default:
-					this.opaque = 0;
+					this.opaque = type.opaque;
 					this._flags = 0;
 					break;
 				}
@@ -266,7 +266,7 @@ namespace VoxelPlay {
 				this._flags = 0;
 				break;
 			default:
-				this.opaque = 0;
+				this.opaque = type.opaque;
 				this._flags = 0;
 				break;
 			}
@@ -304,14 +304,14 @@ namespace VoxelPlay {
 				this._flags = 0;
 				break;
 			default:
-				this.opaque = 0;
+				this.opaque = type.opaque;
 				this._flags = 0;
 				break;
 			}
 		}
 
 		[MethodImpl(256)]
-		public void SetFast (VoxelDefinition type, byte opaque, byte occludes) {
+		public void SetFast (VoxelDefinition type, byte opaque) {
 			#if USES_TINTING
 			this.red = type.tintColor.r;
 			this.green = type.tintColor.g;
@@ -325,7 +325,7 @@ namespace VoxelPlay {
 		}
 
 		[MethodImpl(256)]
-		public void SetFast (VoxelDefinition type, byte opaque, byte occludes, Color32 tintColor) {
+		public void SetFast (VoxelDefinition type, byte opaque, Color32 tintColor) {
 			#if USES_TINTING
 			this.red = tintColor.r;
 			this.green = tintColor.g;
@@ -334,7 +334,7 @@ namespace VoxelPlay {
 			this.typeIndex = type.index;
 			//this.type = type;
 			this.hasContent = (byte)1;
-			this.opaque = opaque;
+			this.opaque = type.opaque;
 			this._flags = 0;
 		}
 

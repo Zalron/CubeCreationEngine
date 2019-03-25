@@ -31,6 +31,7 @@ namespace VoxelPlay {
 
 		public static Bounds bounds1 = new Bounds (Misc.vector3zero, Misc.vector3one);
 		public static Bounds bounds16 = new Bounds(Misc.vector3zero, Misc.vector3sixteen);
+		public static Bounds bounds16Stretched = new Bounds(new Vector3(0,0,0), new Vector3(16,48,16)); // to support curvature effect, bounds needs to be taller to avoid wrong frustum culling
 		public static Bounds boundsEmpty = new Bounds ();
 
 		public static Quaternion quaternionZero = Quaternion.Euler (0, 0, 0);
@@ -52,6 +53,13 @@ namespace VoxelPlay {
 					n.Add (original [k]);
 			}
 			return n.ToArray ();
+		}
+
+		public static Color32 MultiplyRGB(this Color32 c1, Color32 c2) {
+			c1.r = (byte)(c1.r * c2.r / 255);
+			c1.g = (byte)(c1.g * c2.g / 255);
+			c1.b = (byte)(c1.b * c2.b / 255);
+			return c1;
 		}
 	}
 

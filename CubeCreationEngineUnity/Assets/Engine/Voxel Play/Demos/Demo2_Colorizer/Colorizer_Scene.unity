@@ -630,7 +630,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.1
-  far clip plane: 1000
+  far clip plane: 64
   field of view: 60
   orthographic: 0
   orthographic size: 5
@@ -769,7 +769,7 @@ MonoBehaviour:
   enableTinting: 1
   enableOutline: 1
   outlineColor: {r: 0, g: 0, b: 0, a: 0.5}
-  outlineThreshold: 1
+  outlineThreshold: 0.1
   _visibleChunksDistance: 4
   adjustCameraFarClip: 1
   useGeometryShaders: 0
@@ -853,6 +853,10 @@ MonoBehaviour:
   hitDamage: 2
   hitRange: 40
   hitDamageRadius: 1
+  bareHandsHitDelay: 0.2
+  bareHandsHitDamage: 3
+  bareHandsHitRange: 5
+  bareHandsHitDamageRadius: 1
   playerItems: []
 --- !u!114 &1829533918
 MonoBehaviour:
@@ -867,6 +871,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enableVoxelLight: 1
   forceUnstuck: 1
+  checkNearChunks: 1
+  chunkExtents: {x: 0, y: 0, z: 0}
+  renderChunks: 0
 --- !u!82 &1829533919
 AudioSource:
   m_ObjectHideFlags: 0

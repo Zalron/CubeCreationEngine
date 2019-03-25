@@ -4,7 +4,7 @@
 #include "UnityCG.cginc"
 #include "AutoLight.cginc"
 #include "Lighting.cginc"
-
+#include "VPCommonVertexModifier.cginc"
 
 /* cube coords
    
@@ -75,24 +75,62 @@ fixed _OutlineThreshold;
 		return UNITY_SAMPLE_TEX2DARRAY_GRAD(_MainTex, float3(nuv, uv.z), ddx(uv.xy), ddy(uv.xy));
 	}
 
-	#define VOXELPLAY_GET_TEXEL_GEO(uv) ReadSmoothTexel(uv);
-	#define VOXELPLAY_GET_TEXEL(uv) ReadSmoothTexel(uv);
-	#define VOXELPLAY_GET_TEXEL_DD(uv) ReadSmoothTexelWithDerivatives(uv);
+	#define VOXELPLAY_GET_TEXEL_GEO(uv) ReadSmoothTexel(uv)
+	#define VOXELPLAY_GET_TEXEL(uv) ReadSmoothTexel(uv)
+	#define VOXELPLAY_GET_TEXEL_DD(uv) ReadSmoothTexelWithDerivatives(uv)
 
-	inline void ApplyOutline(inout fixed4 color, float2 uv) {
+	inline void ApplyOutline(inout fixed4 color, float2 uv, float4 outline) {
 		float2 grd = abs(frac(uv + 0.5) - 0.5);
-		grd /= fwidth(uv);
-		float  lin = 1.0 - saturate(min(grd.x, grd.y) * _OutlineThreshold);
+		grd /= fwidth(uv) * _OutlineThreshold;
+
+		if (uv.x<0.5) {
+			grd.x += outline.x;
+		} else {
+			grd.x += outline.z;
+		}
+		if (uv.y<0.5) {
+			grd.y += outline.w;
+		} else {
+			grd.y += outline.y;
+		}
+
+		float  lin = 1.0 - saturate(min(grd.x, grd.y));
 		color.rgb = lerp(color.rgb, _OutlineColor.rgb, lin * _OutlineColor.a);
 	}
 
+	inline void ApplyOutlineSimple(inout fixed4 color, float2 uv) {
+		float2 grd = abs(frac(uv + 0.5) - 0.5);
+		grd /= fwidth(uv) * _OutlineThreshold;
+		float  lin = 1.0 - saturate(min(grd.x, grd.y));
+		color.rgb = lerp(color.rgb, _OutlineColor.rgb, lin * _OutlineColor.a);
+	}
+
+
 #else // no AA pixels
 
-	#define VOXELPLAY_GET_TEXEL_GEO(uv) UNITY_SAMPLE_TEX2DARRAY(_MainTex, uv.xyz);
-	#define VOXELPLAY_GET_TEXEL(uv) UNITY_SAMPLE_TEX2DARRAY(_MainTex, uv.xyz);
-	#define VOXELPLAY_GET_TEXEL_DD(uv) UNITY_SAMPLE_TEX2DARRAY(_MainTex, uv.xyz);
+	#define VOXELPLAY_GET_TEXEL_GEO(uv) UNITY_SAMPLE_TEX2DARRAY(_MainTex, uv.xyz)
+	#define VOXELPLAY_GET_TEXEL(uv) UNITY_SAMPLE_TEX2DARRAY(_MainTex, uv.xyz)
+	#define VOXELPLAY_GET_TEXEL_DD(uv) UNITY_SAMPLE_TEX2DARRAY(_MainTex, uv.xyz)
 
-	inline void ApplyOutline(inout fixed4 color, float2 uv) {
+	inline void ApplyOutline(inout fixed4 color, float2 uv, float4 outline) {
+		float2 grd = abs(uv - 0.5);
+
+		if (uv.x<0.5) {
+			grd.x -= outline.x;
+		} else {
+			grd.x -= outline.z;
+		}
+		if (uv.y<0.5) {
+			grd.y -= outline.w;
+		} else {
+			grd.y -= outline.y;
+		}
+
+		float  lin = max(grd.x, grd.y) > _OutlineThreshold;
+		color.rgb = lerp(color.rgb, _OutlineColor.rgb, lin * _OutlineColor.a);
+	}
+
+	inline void ApplyOutlineSimple(inout fixed4 color, float2 uv) {
 		float2 grd = abs(uv - 0.5);
 		float  lin = max(grd.x, grd.y) > _OutlineThreshold;
 		color.rgb = lerp(color.rgb, _OutlineColor.rgb, lin * _OutlineColor.a);
@@ -100,11 +138,6 @@ fixed _OutlineThreshold;
 
 #endif
 
-#if !VOXELPLAY_USE_OUTLINE || defined(VP_CUTOUT)
-	#define VOXELPLAY_APPLY_OUTLINE(color, i)
-#else
-	#define VOXELPLAY_APPLY_OUTLINE(color, i) ApplyOutline(color, i.uv);
-#endif
 
 #define VOXELPLAY_NEEDS_TANGENT_SPACE VOXELPLAY_USE_PARALLAX || VOXELPLAY_USE_NORMAL
 #if VOXELPLAY_NEEDS_TANGENT_SPACE
@@ -164,18 +197,34 @@ float4 _VPPointLightPosition[32];
 float4 _VPPointLightColor[32];
 CBUFFER_END
 
-float3 ShadePointLights(float3 worldPos, float3 normal) {
+float3 ShadePointLights(float3 worldPos, float3 normal, float specularAtten) {
 	float3 color = 0;
 	for (int k=0;k<32;k++) {
 		float3 toLight = _VPPointLightPosition[k].xyz - worldPos;
 		float dist = dot(toLight, toLight);
 		toLight /= dist + 0.0001;
-		float atten = dist / _VPPointLightPosition[k].w;
+		float lightAtten = dist / _VPPointLightPosition[k].w;
 		float NdL = saturate((dot(normal, toLight) - 1.0) * _VPPointLightColor[k].a + 1.0);
-		color += _VPPointLightColor[k].rgb * (NdL / (1.0 + atten));
+		color += _VPPointLightColor[k].rgb * (NdL / (1.0 + lightAtten));
 	}
+
+	#if defined(USE_SPECULAR)
+		float3 viewDir = normalize(_WorldSpaceCameraPos.xyz - worldPos);
+		float3 h = normalize (_WorldSpaceLightPos0.xyz + viewDir);
+		h *= (sign(_WorldSpaceLightPos0.y) + 1.0) * 0.5; // avoid specular under the horizon
+	    float nh = max (0, dot (normal, h));
+	    float spec = pow (nh, 32.0);
+	    color.rgb += (specularAtten * spec) * _LightColor0.rgb;
+	#endif
+
 	return color;
 }
+
+
+float3 ShadePointLights(float3 worldPos, float3 normal) {
+	return ShadePointLights(worldPos, normal, 0.0);
+}
+
 
 
 float3 ShadePointLightsWithoutNormal(float3 worldPos) {
@@ -244,8 +293,8 @@ fixed3 getSkyColor(float3 ray) {
 
 #define VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_GEO(viewDir, normal) fixed3 light = GetLight(normal); float3 nviewDir = normalize(-viewDir); COMPUTE_SUN_SCATTERING(nviewDir); i.skyColor = fixed4(getSkyColor(nviewDir), saturate( (dot(viewDir, viewDir) - _VPFogData.x) / _VPFogData.y ));
 #define VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_SIMPLE(viewDir) fixed3 light = GetLight(); i.skyColor = fixed4(getSkyColor(normalize(-viewDir)), saturate( (dot(viewDir, viewDir) - _VPFogData.x) / _VPFogData.y ));
-#define VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_NORMAL(worldPos, normal) float3 viewDir = worldPos - _WorldSpaceCameraPos; float3 nviewDir = normalize(viewDir); COMPUTE_SUN_SCATTERING(nviewDir); o.skyColor = fixed4(getSkyColor(nviewDir), saturate( (dot(viewDir, viewDir) - _VPFogData.x) / _VPFogData.y)); o.light = GetPerVoxelNdotL(normal);
-#define VOXELPLAY_INITIALIZE_LIGHT_AND_FOG(worldPos) float3 viewDir = worldPos - _WorldSpaceCameraPos; float3 nviewDir = normalize(viewDir); COMPUTE_SUN_SCATTERING(nviewDir); float3 normal = -nviewDir; o.skyColor = fixed4(getSkyColor(nviewDir), saturate((dot(viewDir, viewDir) - _VPFogData.x) / _VPFogData.y)); o.light = GetPerVoxelNdotL(normal);
+#define VOXELPLAY_INITIALIZE_LIGHT_AND_FOG_NORMAL(worldPos, normal) float3 viewDir = worldPos - _WorldSpaceCameraPos; float3 nviewDir = normalize(viewDir); o.skyColor = fixed4(getSkyColor(nviewDir), saturate( (dot(viewDir, viewDir) - _VPFogData.x) / _VPFogData.y)); o.light = GetPerVoxelNdotL(normal);
+#define VOXELPLAY_INITIALIZE_LIGHT_AND_FOG(worldPos) float3 viewDir = worldPos - _WorldSpaceCameraPos; float3 nviewDir = normalize(viewDir); float3 normal = -nviewDir; o.skyColor = fixed4(getSkyColor(nviewDir), saturate((dot(viewDir, viewDir) - _VPFogData.x) / _VPFogData.y)); o.light = GetPerVoxelNdotL(normal);
 
 #else // fallbacks when fog is disabled
 
@@ -261,7 +310,7 @@ fixed3 getSkyColor(float3 ray) {
 #if VOXELPLAY_PIXEL_LIGHTS
 	#define VOXELPLAY_LIGHT_DATA(idx1,idx2) fixed light: TEXCOORD##idx1; float3 wpos: TEXCOORD##idx2;
 	#define VOXELPLAY_NORMAL_DATA float3 norm: NORMAL;
-	#if VOXELPLAY_USE_AO
+	#if VOXELPLAY_USE_AO || defined(USE_SPECULAR)
 		#define VOXELPLAY_SET_VERTEX_LIGHT(i, worldPos, normal) i.wpos = worldPos; i.norm = normal;
 		#define VOXELPLAY_SET_VERTEX_LIGHT_WITHOUT_NORMAL(i, worldPos) i.wpos = worldPos;
 		#define VOXELPLAY_SET_FACE_LIGHT(i, worldPos, normal)
@@ -272,7 +321,7 @@ fixed3 getSkyColor(float3 ray) {
 	#endif
 	#define VOXELPLAY_SET_LIGHT(i, worldPos, normal) i.wpos = worldPos; i.norm = normal;
 	#define VOXELPLAY_SET_LIGHT_WITHOUT_NORMAL(i, worldPos) i.wpos = worldPos;
-	#define VOXELPLAY_VERTEX_LIGHT_COLOR ShadePointLights(i.wpos, i.norm)
+	#define VOXELPLAY_VERTEX_LIGHT_COLOR(specularAtten) ShadePointLights(i.wpos, i.norm, specularAtten)
 #else
 	#define VOXELPLAY_LIGHT_DATA(idx1,idx2) fixed light: TEXCOORD##idx1; fixed3 vertexLightColor: TEXCOORD##idx2;
 	#define VOXELPLAY_NORMAL_DATA
@@ -283,11 +332,11 @@ fixed3 getSkyColor(float3 ray) {
 	#else
 		#define VOXELPLAY_SET_VERTEX_LIGHT(i, worldPos, normal)
 		#define VOXELPLAY_SET_VERTEX_LIGHT_WITHOUT_NORMAL(i, worldPos)
-		#define VOXELPLAY_SET_FACE_LIGHT(i, worldPos, normal) i.vertexLightColor = ShadePointLightsWithoutNormal(worldPos);
+		#define VOXELPLAY_SET_FACE_LIGHT(i, worldPos, normal) i.vertexLightColor = ShadePointLights(worldPos, normal);
 	#endif
 	#define VOXELPLAY_SET_LIGHT(i, worldPos, normal) i.vertexLightColor = ShadePointLights(worldPos, normal);
 	#define VOXELPLAY_SET_LIGHT_WITHOUT_NORMAL(i, worldPos) i.vertexLightColor = ShadePointLightsWithoutNormal(worldPos);
-	#define VOXELPLAY_VERTEX_LIGHT_COLOR i.vertexLightColor
+	#define VOXELPLAY_VERTEX_LIGHT_COLOR(atten) i.vertexLightColor
 #endif
 
 #if defined(NO_SELF_SHADOWS)
@@ -303,9 +352,9 @@ fixed3 getSkyColor(float3 ray) {
 fixed _VPDaylightShadowAtten;
 #endif
 
-#define VOXELPLAY_APPLY_LIGHTING(color,i) fixed atten = VOXELPLAY_LIGHT_ATTENUATION(i); color.rgb *= atten * _LightColor0.rgb + VOXELPLAY_VERTEX_LIGHT_COLOR;
-#define VOXELPLAY_APPLY_LIGHTING_AO_AND_GI(color,i) fixed atten = VOXELPLAY_LIGHT_ATTENUATION(i); float ao = i.uv.w; ao = 1.0-(1.0-ao)*(1.0-ao); color.rgb *= (atten * ao) * _LightColor0 + VOXELPLAY_VERTEX_LIGHT_COLOR;
-#define VOXELPLAY_APPLY_LIGHTING_AND_GI(color,i) fixed atten = VOXELPLAY_LIGHT_ATTENUATION(i); color.rgb *= (atten * i.uv.w) * _LightColor0.rgb + VOXELPLAY_VERTEX_LIGHT_COLOR;
+#define VOXELPLAY_APPLY_LIGHTING(color,i) fixed atten = VOXELPLAY_LIGHT_ATTENUATION(i); color.rgb *= atten * _LightColor0.rgb + VOXELPLAY_VERTEX_LIGHT_COLOR(atten);
+#define VOXELPLAY_APPLY_LIGHTING_AO_AND_GI(color,i) fixed atten = VOXELPLAY_LIGHT_ATTENUATION(i); float ao = i.uv.w; ao = 1.0-(1.0-ao)*(1.0-ao); color.rgb *= (atten * ao) * _LightColor0 + VOXELPLAY_VERTEX_LIGHT_COLOR(i.uv.w);
+#define VOXELPLAY_APPLY_LIGHTING_AND_GI(color,i) fixed atten = VOXELPLAY_LIGHT_ATTENUATION(i); color.rgb *= (atten * i.uv.w) * _LightColor0.rgb + VOXELPLAY_VERTEX_LIGHT_COLOR(i.uv.w);
 
 #if defined(USE_EMISSION)
 fixed _VPEmissionIntensity;
@@ -317,7 +366,7 @@ fixed _VPEmissionIntensity;
 #endif // EMISSION
 
 
-#define VOXELPLAY_OUTPUT_UV(uv, i) i.uv = uv;
+#define VOXELPLAY_OUTPUT_UV(x, i) i.uv = (x);
 
 
 
@@ -384,6 +433,20 @@ fixed _VPEmissionIntensity;
 	#define VOXELPLAY_OUTPUT_PARALLAX_DATA(worldPos, uv, i) 
 	#define VOXELPLAY_APPLY_PARALLAX(i)
 #endif // VOXELPLAY_USE_PARALLAX
+
+#if VOXELPLAY_USE_OUTLINE
+	#define VOXELPLAY_OUTLINE_DATA(idx1) float4 outlineData : TEXCOORD##idx1; 
+	#define VOXELPLAY_INITIALIZE_OUTLINE(i) i.outlineData = 0;
+	#define VOXELPLAY_SET_OUTLINE(x) i.outlineData = x>0;
+	#define VOXELPLAY_APPLY_OUTLINE(color, i) ApplyOutline(color, i.uv.xy, i.outlineData);
+	#define VOXELPLAY_APPLY_OUTLINE_SIMPLE(color, i) ApplyOutlineSimple(color, i.uv.xy);
+#else
+	#define VOXELPLAY_OUTLINE_DATA(idx1)
+	#define VOXELPLAY_INITIALIZE_OUTLINE(i)
+	#define VOXELPLAY_SET_OUTLINE(x)
+	#define VOXELPLAY_APPLY_OUTLINE(color, i)
+	#define VOXELPLAY_APPLY_OUTLINE_SIMPLE(color, i)
+#endif
 
 #endif // VOXELPLAY_COMMON
 

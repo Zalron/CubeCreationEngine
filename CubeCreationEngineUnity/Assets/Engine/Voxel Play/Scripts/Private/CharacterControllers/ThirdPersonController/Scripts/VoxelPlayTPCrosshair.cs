@@ -5,18 +5,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace VoxelPlay
-{
+namespace VoxelPlay {
 
 
-	public partial class VoxelPlayThirdPersonController : VoxelPlayCharacterControllerBase
-	{
+	public partial class VoxelPlayThirdPersonController : VoxelPlayCharacterControllerBase {
 
 		[Header ("Crosshair")]
-		public bool crosshairEnabled;
+		public bool crosshairEnabled = true;
 		public float crosshairScale = 0.1f;
-		public float crosshairOnTargetAnimationSpeed = 0.75f;
-		public float crosshairOnTargetAnimationScale = 0.2f;
+		public float targetAnimationSpeed = 0.75f;
+		public float targetAnimationScale = 0.2f;
+		[Tooltip("Max distance from character to selection")]
+		public float crosshairMaxDistance = 30f;
 		public Color crosshairOnTargetColor = Color.yellow;
 		public Color crosshairNormalColor = Color.white;
 		[Tooltip ("Crosshair will change over a reachable voxel.")]
@@ -35,8 +35,7 @@ namespace VoxelPlay
 		const string CROSSHAIR_NAME = "Crosshair";
 		Material crosshairMat;
 
-		void InitCrosshair ()
-		{
+		void InitCrosshair () {
 			if (env.crosshairPrefab == null) {
 				Debug.LogError ("Crosshair prefab not assigned to this world.");
 				return;
@@ -59,16 +58,15 @@ namespace VoxelPlay
 
 		}
 
-		void ResetCrosshairPosition ()
-		{
+		void ResetCrosshairPosition () {
 			UpdateCrosshairScreenPosition ();
 			crosshair.localRotation = Misc.quaternionZero;
 			crosshair.localScale = Misc.vector3one * crosshairScale;
 			crosshairMat.color = crosshairNormalColor;
+			env.VoxelHighlight (false);
 		}
 
-		void UpdateCrosshairScreenPosition ()
-		{
+		void UpdateCrosshairScreenPosition () {
 			Vector3 scrPos = input.screenPos;
 			scrPos.z = m_Camera.nearClipPlane + 0.001f;
 			Vector3 newPosition = m_Camera.ScreenToWorldPoint (scrPos);
@@ -76,12 +74,7 @@ namespace VoxelPlay
 		}
 
 
-		void LateUpdate ()
-		{
-
-			if (voxelHighlight) {
-				VoxelHighlight ();
-			}
+		void LateUpdate () {
 
 			if (env == null || !env.applicationIsPlaying || !crosshairEnabled)
 				return;
@@ -89,9 +82,19 @@ namespace VoxelPlay
 			UpdateCrosshairScreenPosition ();
 
 			Ray ray = m_Camera.ScreenPointToRay (input.screenPos);
+			VoxelHitInfo hitInfo;
 
 			// Check if there's a voxel in range
-			crosshairOnBlock = env.RayCast (ray, out crosshairHitInfo, VoxelPlayPlayer.instance.hitRange); 
+			crosshairOnBlock = env.RayCast (ray, out hitInfo) && hitInfo.voxelIndex >= 0; 
+			if (!input.GetButton (InputButtonNames.Button1) || crosshairHitInfo.GetVoxelNow().isEmpty) {
+				crosshairHitInfo = hitInfo;
+			}
+			if (crosshairOnBlock) {
+				crosshairOnBlock = FastVector.SqrDistance (ref crosshairHitInfo.voxelCenter, ref curPos) < crosshairMaxDistance * crosshairMaxDistance;
+				if (!crosshairOnBlock) {
+					crosshairHitInfo.Clear ();
+				}
+			}
 			if (changeOnBlock) {
 				if (!crosshairOnBlock) {
 					ResetCrosshairPosition ();
@@ -100,8 +103,8 @@ namespace VoxelPlay
 				// Puts crosshair over the voxel but do it only if crosshair won't disappear because of the angle or it's switching from orbit to free mode (or viceversa)
 				float d = Vector3.Dot (ray.direction, crosshairHitInfo.normal);
 				if (d < -0.2f) {
-					crosshair.position = crosshairHitInfo.point;
-					crosshair.LookAt (crosshairHitInfo.point + crosshairHitInfo.normal);
+					crosshair.position = hitInfo.point;
+					crosshair.LookAt (hitInfo.point + crosshairHitInfo.normal);
 				} else {
 					crosshair.localRotation = Misc.quaternionZero;
 				}
@@ -109,26 +112,10 @@ namespace VoxelPlay
 
 			}
 			if (crosshairOnBlock) {
-				crosshair.localScale = Misc.vector3one * (crosshairScale * (1f - crosshairOnTargetAnimationScale * 0.5f + Mathf.PingPong (Time.time * crosshairOnTargetAnimationSpeed, crosshairOnTargetAnimationScale)));
+				crosshair.localScale = Misc.vector3one * (crosshairScale * (1f - targetAnimationScale * 0.5f + Mathf.PingPong (Time.time * targetAnimationSpeed, targetAnimationScale)));
+				env.VoxelHighlight (crosshairHitInfo, voxelHighlightColor, voxelHighlightEdge);
 			}
 		}
-
-		void VoxelHighlight ()
-		{
-			Vector3 rayOrigin = GetRayOrigin ();
-			Ray ray = new Ray (rayOrigin, transform.forward);
-			VoxelHitInfo hitInfo;
-			if (env.RayCast (ray, out hitInfo, player.hitRange)) {
-				if (hitInfo.voxelCenter != lastVoxelHighlightPos) {
-					lastVoxelHighlightPos = hitInfo.voxelCenter;
-					env.VoxelHighlight (hitInfo, voxelHighlightColor, voxelHighlightEdge);
-				}
-			} else {
-				lastVoxelHighlightPos = Misc.vector3min;
-				env.VoxelHighlight (false);
-			}
-		}
-
 
 	}
 

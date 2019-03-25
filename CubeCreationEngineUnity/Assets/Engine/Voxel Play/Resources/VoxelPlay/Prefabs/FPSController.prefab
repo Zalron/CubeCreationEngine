@@ -423,6 +423,10 @@ MonoBehaviour:
   hitDamage: 2
   hitRange: 5
   hitDamageRadius: 1
+  bareHandsHitDelay: 0.2
+  bareHandsHitDamage: 3
+  bareHandsHitRange: 5
+  bareHandsHitDamageRadius: 1
   playerItems: []
 --- !u!114 &114980913785547542
 MonoBehaviour:
@@ -435,8 +439,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ecfb18d5d5634cd28be0b2077ed7418, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pointLightMaxIntensity: 1.1
-  pointLightMinIntensity: 0.9
+  pointLightMaxIntensity: 2
+  pointLightMinIntensity: 1.5
 --- !u!124 &124791002836394470
 Behaviour:
   m_ObjectHideFlags: 1
@@ -457,7 +461,7 @@ CharacterController:
   m_Height: 1.8
   m_Radius: 0.4
   m_SlopeLimit: 45
-  m_StepOffset: 1.1
+  m_StepOffset: 0.4
   m_SkinWidth: 0.01
   m_MinMoveDistance: 0
   m_Center: {x: 0, y: 0, z: 0}

@@ -34,7 +34,7 @@ namespace VoxelPlay {
 			InitSaveGameStructs();
 			int vdCount = int.Parse(sr.ReadLine());
 			for (int k = 0; k < vdCount; k++) {
-				saveVoxelDefinitionList.Add(sr.ReadLine());
+				saveVoxelDefinitionsList.Add(sr.ReadLine());
 			}
 
 			// Read chunks
@@ -64,7 +64,7 @@ namespace VoxelPlay {
 						continue;
 					// Voxel definition
 					int vdIndex = int.Parse(wordData[0]);
-					VoxelDefinition voxelDefinition = GetVoxelDefinition(saveVoxelDefinitionList[vdIndex]);
+					VoxelDefinition voxelDefinition = GetVoxelDefinition(saveVoxelDefinitionsList[vdIndex]);
 					if (voxelDefinition == null) {
 						voxelDefinition = defaultVoxel; // should not happen
 					}

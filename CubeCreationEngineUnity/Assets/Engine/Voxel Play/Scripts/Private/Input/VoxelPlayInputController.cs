@@ -28,12 +28,18 @@ namespace VoxelPlay {
 		MiddleButton
 	}
 
-	public enum InputButtonState {
+	public enum InputButtonPressState {
 		Idle,
 		Down,
 		Up,
 		Pressed
 	}
+
+	public struct InputButtonState {
+		public InputButtonPressState pressState;
+		public float pressStartTime;
+	}
+
 
 	public abstract class VoxelPlayInputController {
 		/// <summary>
@@ -83,6 +89,10 @@ namespace VoxelPlay {
 		/// </summary>
 		public bool enabled;
 
+		/// <summary>
+		/// Maximum time in seconds between button press and release to inform a click
+		/// </summary>
+		public float clickTime = 0.2f;
 
 		[NonSerialized]
 		public bool initialized;
@@ -102,15 +112,19 @@ namespace VoxelPlay {
 
 
 		public bool GetButton (InputButtonNames button) {
-			return initialized && buttons [(int)button] == InputButtonState.Pressed;
+			return initialized && buttons [(int)button].pressState == InputButtonPressState.Pressed;
 		}
 
 		public bool GetButtonDown (InputButtonNames button) {
-			return initialized && buttons [(int)button] == InputButtonState.Down;
+			return initialized && buttons [(int)button].pressState == InputButtonPressState.Down;
 		}
 
 		public bool GetButtonUp (InputButtonNames button) {
-			return initialized && buttons [(int)button] == InputButtonState.Up;
+			return initialized && buttons [(int)button].pressState == InputButtonPressState.Up;
+		}
+
+		public bool GetButtonClick (InputButtonNames button) {
+			return initialized && buttons [(int)button].pressState == InputButtonPressState.Up && (Time.time - buttons [(int)button].pressStartTime) < clickTime;
 		}
 
 
@@ -127,14 +141,14 @@ namespace VoxelPlay {
 				return;
 			anyKey = Input.anyKey;
 			for (int k = 0; k < buttons.Length; k++) {
-				buttons [k] = InputButtonState.Idle;
+				buttons [k].pressState = InputButtonPressState.Idle;
 			}
 			if (!enabled)
 				return;
 			UpdateInputState ();
 			if (!anyKey) {
 				for (int k = 0; k < buttons.Length; k++) {
-					if (buttons [k] != InputButtonState.Idle) {
+					if (buttons [k].pressState != InputButtonPressState.Idle) {
 						anyKey = true;
 						break;
 					}
@@ -145,22 +159,24 @@ namespace VoxelPlay {
 
 		protected void ReadButtonState (InputButtonNames button, string buttonName) {
 			if (Input.GetButtonDown (buttonName)) {
-				buttons [(int)button] = InputButtonState.Down;
+				buttons [(int)button].pressStartTime = Time.time;
+				buttons [(int)button].pressState = InputButtonPressState.Down;
 			} else if (Input.GetButtonUp (buttonName)) {
-				buttons [(int)button] = InputButtonState.Up;
+				buttons [(int)button].pressState = InputButtonPressState.Up;
 			} else if (Input.GetButton (buttonName)) {
-				buttons [(int)button] = InputButtonState.Pressed;
+				buttons [(int)button].pressState = InputButtonPressState.Pressed;
 			}
 		}
 
 
 		protected void ReadKeyState (InputButtonNames button, KeyCode keyCode) {
 			if (Input.GetKeyDown (keyCode)) {
-				buttons [(int)button] = InputButtonState.Down;
+				buttons [(int)button].pressStartTime = Time.time;
+				buttons [(int)button].pressState = InputButtonPressState.Down;
 			} else if (Input.GetKeyUp (keyCode)) {
-				buttons [(int)button] = InputButtonState.Up;
+				buttons [(int)button].pressState = InputButtonPressState.Up;
 			} else if (Input.GetKey (keyCode)) {
-				buttons [(int)button] = InputButtonState.Pressed;
+				buttons [(int)button].pressState = InputButtonPressState.Pressed;
 			}
 		}
 	

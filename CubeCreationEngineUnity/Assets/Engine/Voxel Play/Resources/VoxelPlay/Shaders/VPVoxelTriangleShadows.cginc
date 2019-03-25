@@ -1,4 +1,4 @@
-﻿#include "UnityCG.cginc"
+﻿#include "VPCommon.cginc"
 
 struct appdata {
 	float4 vertex   : POSITION;
@@ -15,6 +15,7 @@ struct vertexInfo {
 
 v2f vert (appdata v) {
 	v2f o;
+	VOXELPLAY_MODIFY_VERTEX_NO_WPOS(v.vertex)
 	TRANSFER_SHADOW_CASTER(o);
 	return o;
 }

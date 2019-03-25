@@ -49,16 +49,23 @@ namespace VoxelPlay {
 
 		public float min, max;
 
-		[HideInInspector]
+		[HideInInspector, NonSerialized]
 		public float[] noiseValues;
-		[HideInInspector]
+		[HideInInspector, NonSerialized]
 		public int noiseTextureSize;
-		[HideInInspector]
+		[HideInInspector, NonSerialized]
 		public float value;
+		[HideInInspector, NonSerialized]
+		public Texture2D lastTextureLoaded;
 	}
 
+	public partial class BiomeDefinition {
+		[NonSerialized]
+		public int biomeGeneration;
+	}
 
 	[CreateAssetMenu (menuName = "Voxel Play/Terrain Generators/Multi-Step Terrain Generator", fileName = "MultiStepTerrainGenerator", order = 101)]
+	[HelpURL ("https://kronnect.freshdesk.com/support/solutions/articles/42000001906-terrain-generators")]
 	public class TerrainDefaultGenerator : VoxelPlayTerrainGenerator {
 		public StepData[] steps;
 
@@ -71,8 +78,6 @@ namespace VoxelPlay {
 
 		[Header ("Underground")]
 		public bool addOre;
-		public Texture2D noiseOre;
-		public float noiseOreScale = 4f;
 
 		[Header ("Moisture Parameters")]
 		public Texture2D moisture;
@@ -84,17 +89,16 @@ namespace VoxelPlay {
 		int noiseMoistureTextureSize;
 		float seaLevelAlignedWithInt, beachLevelAlignedWithInt;
 		bool paintShore;
-		bool canAddOre;
-		float[] noiseOreValues;
-		int noiseOreSize;
 		HeightMapInfo[] heightChunkData;
+		Texture2D lastMoistureTextureLoaded;
+		int generation;
 
-		public override void Init () {
+		protected override void Init () {
 			seaLevelAlignedWithInt = ((int)(seaLevel * maxHeight) / maxHeight);
 			beachLevelAlignedWithInt = ((int)(seaLevel * maxHeight) + 1f) / maxHeight;
 			if (steps != null) {
 				for (int k = 0; k < steps.Length; k++) {
-					if (steps [k].noiseTexture != null && (steps [k].noiseValues == null || steps [k].noiseValues.Length == 0 || steps [k].noiseTexture.width != steps [k].noiseTextureSize)) {
+					if (steps [k].noiseTexture != null) {
 						bool repeated = false;
 						for (int j = 0; j < k - 1; j++) {
 							if (steps [k].noiseTexture == steps [k].noiseTexture) {
@@ -104,7 +108,8 @@ namespace VoxelPlay {
 								break;
 							}
 						}
-						if (!repeated) {
+						if (!repeated && (steps [k].noiseTextureSize == 0 || steps [k].noiseValues == null || steps [k].lastTextureLoaded == null || steps [k].noiseTexture != steps [k].lastTextureLoaded)) {
+							steps [k].lastTextureLoaded = steps [k].noiseTexture;
 							steps [k].noiseValues = NoiseTools.LoadNoiseTexture (steps [k].noiseTexture, out steps [k].noiseTextureSize);
 						}
 					}
@@ -117,33 +122,24 @@ namespace VoxelPlay {
 					}
 				}
 			}
-			if (moisture != null && (moistureValues == null || moistureValues.Length == 0)) {
+			if (moisture != null && (noiseMoistureTextureSize == 0 || moistureValues == null || lastMoistureTextureLoaded == null || lastMoistureTextureLoaded != moisture)) {
+				lastMoistureTextureLoaded = moisture;
 				moistureValues = NoiseTools.LoadNoiseTexture (moisture, out noiseMoistureTextureSize);
-			}
+			} 
 			if (waterVoxel == null) {
 				waterVoxel = Resources.Load<VoxelDefinition> ("VoxelPlay/Defaults/Water/VoxelWaterSea");
 			}
 			paintShore = shoreVoxel != null;
 
-			canAddOre = addOre;
-			if (canAddOre) {
-				if (noiseOre == null) {
-					canAddOre = false;
-				} else if (noiseOreValues == null || noiseOreValues.Length == 0) {
-					noiseOreValues = NoiseTools.LoadNoiseTexture (noiseOre, out noiseOreSize);
-					if (noiseOreValues == null || noiseOreValues.Length == 0) {
-						canAddOre = false;
-					}
-				}
-			}
 			if (heightChunkData == null) {
 				heightChunkData = new HeightMapInfo[16 * 16];
 			}
 
-            // Ensure voxels are available
-            env.AddVoxelDefinition(shoreVoxel);
-            env.AddVoxelDefinition(waterVoxel);
-        }
+		
+			// Ensure voxels are available
+			env.AddVoxelDefinition (shoreVoxel);
+			env.AddVoxelDefinition (waterVoxel);
+		}
 
 		/// <summary>
 		/// Gets the altitude and moisture (in 0-1 range).
@@ -154,11 +150,11 @@ namespace VoxelPlay {
 		/// <param name="moisture">Moisture.</param>
 		public override void GetHeightAndMoisture (float x, float z, out float altitude, out float moisture) {
 
-			if (!env.applicationIsPlaying)
-				Init ();
+			if (!isInitialized) {
+				Initialize ();
+			}
 
 			bool allowBeach = true;
-
 			altitude = 0;
 			if (steps != null && steps.Length > 0) {
 				float value = 0;
@@ -311,12 +307,12 @@ namespace VoxelPlay {
 		/// <returns><c>true</c>, if terrain was painted, <c>false</c> otherwise.</returns>
 		/// <param name="position">Central position of the chunk.</param>
 		public override bool PaintChunk (VoxelChunk chunk) {
+
 			Vector3 position = chunk.position;
 			if (position.y + 8 < minHeight) {
 				chunk.isAboveSurface = false;
 				return false;
 			}
-
 			bool placeBedrock = (object)world.bedrockVoxel != null && position.y < minHeight + 8;
 			position.x -= 8;
 			position.y -= 8;
@@ -328,7 +324,7 @@ namespace VoxelPlay {
 
 			bool hasContent = false;
 			bool isAboveSurface = false;
-
+			generation++;
 			env.GetHeightMapInfoFast (position.x, position.z, heightChunkData);
 
 			// iterate 256 slice of chunk (z/x plane = 16*16 positions)
@@ -340,7 +336,6 @@ namespace VoxelPlay {
 					isAboveSurface = true;
 					continue;
 				}
-
 				BiomeDefinition biome = heightChunkData [arrayIndex].biome;
 				if ((object)biome == null) {
 					biome = world.defaultBiome;
@@ -371,10 +366,10 @@ namespace VoxelPlay {
 					isAboveSurface = true;
 					if (voxels [voxelIndex].hasContent == 0) {
 						if (paintShore && pos.y == waterLevel) {
-							// shore
+							// this is on the shore, place a shoreVoxel
 							voxels [voxelIndex].Set (shoreVoxel);
 						} else {
-							// surface => draw voxel top, vegetation and trees
+							// we're at the surface of the biome => draw the voxel top of the biome and also check for random vegetation and trees
 							voxels [voxelIndex].Set (biome.voxelTop);
 #if UNITY_EDITOR
 							if (!env.draftModeActive) {
@@ -383,11 +378,14 @@ namespace VoxelPlay {
 								if (pos.y > waterLevel) {
 									float rn = WorldRand.GetValue (pos);
 									if (env.enableTrees && biome.treeDensity > 0 && rn < biome.treeDensity && biome.trees.Length > 0) {
-										env.RequestTreeCreation (chunk, pos, env.GetTree (biome.trees, rn / biome.treeDensity)); //  biome.trees, rn / biome.treeDensity);
+										// request one tree at this position
+										env.RequestTreeCreation (chunk, pos, env.GetTree (biome.trees, rn / biome.treeDensity)); 
 									} else if (env.enableVegetation && biome.vegetationDensity > 0 && rn < biome.vegetationDensity && biome.vegetation.Length > 0) {
 										if (voxelIndex >= 15 * ONE_Y_ROW) {
-											env.RequestVegetationCreation (chunk.top, voxelIndex - ONE_Y_ROW * 15, env.GetVegetation (biome, rn / biome.vegetationDensity)); // biome, rn / biome.vegetationDensity);
+											// request one vegetation voxel one position above which means the chunk above this one
+											env.RequestVegetationCreation (chunk.top, voxelIndex - ONE_Y_ROW * 15, env.GetVegetation (biome, rn / biome.vegetationDensity));
 										} else {
+											// directly place a vegetation voxel above this voxel
 											voxels [voxelIndex + ONE_Y_ROW].Set (env.GetVegetation (biome, rn / biome.vegetationDensity));
 											env.vegetationCreated++;
 										}
@@ -402,44 +400,105 @@ namespace VoxelPlay {
 				}
 
 				// Continue filling down
-				if (canAddOre && biome.ores.Length > 0) {
-					int depth = (int)(groundLevel - pos.y);
-					while (voxelIndex >= 0) {
-						if (voxels [voxelIndex].hasContent == 0) {
-							bool dirt = true;
-							float noiseValue = NoiseTools.GetNoiseValue (noiseOreValues, noiseOreSize, pos.x * noiseOreScale, pos.y * noiseOreScale, pos.z * noiseOreScale);
-							for (int o = 0; o < biome.ores.Length; o++) {
-								if (biome.ores [o].depthMin <= depth && biome.ores [o].depthMax >= depth && biome.ores [o].probabilityMin <= noiseValue && biome.ores [o].probabilityMax >= noiseValue) {
-									voxels [voxelIndex].SetFast (biome.ores [o].ore, 15, 1);
-									dirt = false;
-									break;
-								}
-							}
-							if (dirt) {
-								voxels [voxelIndex].SetFast (biome.voxelDirt, 15, 1);
-							}
-						}
-						voxelIndex -= ONE_Y_ROW;
-						depth++;
-						pos.y--;
+				biome.biomeGeneration = generation;
+				while (voxelIndex >= 0) {
+					if (voxels [voxelIndex].hasContent == 0) {
+						voxels [voxelIndex].SetFast (biome.voxelDirt, 15);
 					}
-				} else {
-					while (voxelIndex >= 0) {
-						if (voxels [voxelIndex].hasContent == 0) {
-							voxels [voxelIndex].SetFast (biome.voxelDirt, 15, 1);
-						}
-						voxelIndex -= ONE_Y_ROW;
-					}
+					voxelIndex -= ONE_Y_ROW;
 				}
 				if (placeBedrock) {
-					voxels [voxelIndex + ONE_Y_ROW].SetFast (world.bedrockVoxel, 15, 1);
+					voxels [voxelIndex + ONE_Y_ROW].SetFast (world.bedrockVoxel, 15);
 				}
 				hasContent = true;
 			}
 
+			// Spawn random ore
+			if (addOre) {
+				// Check if there's any ore in this chunk (randomly)
+				float noiseValue = WorldRand.GetValue (chunk.position);
+				for (int b = 0; b < world.biomes.Length; b++) {
+					BiomeDefinition biome = world.biomes [b];
+					if (biome.biomeGeneration != generation)
+						continue;
+					for (int o = 0; o < biome.ores.Length; o++) {
+						if (biome.ores [o].ore == null)
+							continue;
+						if (biome.ores [o].probabilityMin <= noiseValue && biome.ores [o].probabilityMax >= noiseValue) {
+							// ore picked; determine the number of veins in this chunk
+							int veinsCount = biome.ores [o].veinsCountMin + (int)(WorldRand.GetValue () * (biome.ores [o].veinsCountMax - biome.ores [o].veinsCountMin + 1f));
+							for (int vein = 0; vein < veinsCount; vein++) {
+								Vector3 veinPos = chunk.position;
+								veinPos.x += vein;
+								// Determine random vein position in the chunk
+								Vector3 v = WorldRand.GetVector3 (veinPos, 16);
+								int px = (int)v.x;
+								int py = (int)v.y;
+								int pz = (int)v.z;
+								veinPos = env.GetVoxelPosition (veinPos, px, py, pz);
+								int oreIndex = py * ONE_Y_ROW + pz * ONE_Z_ROW + px;
+								int veinSize = biome.ores [o].veinMinSize + (oreIndex % (biome.ores [o].veinMaxSize - biome.ores [o].veinMinSize + 1));
+								// span ore vein
+								SpawnOre (chunk, biome.ores [o].ore, veinPos, px, py, pz, veinSize, biome.ores [o].depthMin, biome.ores [o].depthMax);
+							}
+							break;
+						}
+					}
+				}
+			}
+
+			// Finish, return
 			chunk.isAboveSurface = isAboveSurface;
 			return hasContent;
 		}
+
+
+		void SpawnOre (VoxelChunk chunk, VoxelDefinition oreDefinition, Vector3 veinPos, int px, int py, int pz, int veinSize, int minDepth, int maxDepth) {
+			int voxelIndex = py * ONE_Y_ROW + pz * ONE_Z_ROW + px;
+			while (veinSize-- > 0 && voxelIndex >= 0 && voxelIndex < chunk.voxels.Length) {
+				// Get height at position
+				int groundLevel = heightChunkData [pz * 16 + px].groundLevel;
+				int depth = (int)(groundLevel - veinPos.y);
+				if (depth < minDepth || depth > maxDepth)
+					return;
+
+				// Replace voxel with ore
+				if (chunk.voxels [voxelIndex].hasContent == 1) {
+					chunk.voxels [voxelIndex].SetFast (oreDefinition, 15);
+				}
+				// Check if spawn continues
+				Vector3 prevPos = veinPos;
+				float v = WorldRand.GetValue (veinPos);
+				int dir = (int)(v * 5);
+				switch (dir) {
+				case 0: // down
+					veinPos.y--;
+					voxelIndex -= ONE_Y_ROW;
+					break;
+				case 1: // right
+					veinPos.x++;
+					voxelIndex++;
+					break;
+				case 2: // back
+					veinPos.z--;
+					voxelIndex -= ONE_Z_ROW;
+					break;
+				case 3: // left
+					veinPos.x--;
+					voxelIndex--;
+					break;
+				case 4: // forward
+					veinPos.z++;
+					voxelIndex += ONE_Z_ROW;
+					break;
+				}
+				if (veinPos.x == prevPos.x && veinPos.y == prevPos.y && veinPos.z == prevPos.z) {
+					veinPos.y--;
+					voxelIndex -= ONE_Y_ROW;
+				}
+			}
+		}
+
 
 
 

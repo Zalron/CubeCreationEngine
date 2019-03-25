@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,7 +10,7 @@ namespace VoxelPlay {
 
 	public partial class VoxelPlayEnvironment : MonoBehaviour {
 
-		const int CLOUDS_SPECIAL_ALTITUDE = 504;
+		const int CLOUDS_SPECIAL_ALTITUDE = 1304;
 		const string CLOUDS_ROOT_NAME = "Clouds Root";
 
 		GameObject cloudsRoot;
@@ -45,6 +46,7 @@ namespace VoxelPlay {
 
 			Texture2D noise = Resources.Load<Texture2D> ("VoxelPlay/Textures/Noise");
 			Color32[] noises = noise.GetPixels32 ();
+
 			int tw = noise.width;
 			int tz = noise.height;
 
@@ -121,7 +123,6 @@ namespace VoxelPlay {
 				tc.position = pos;
 				tc.SetParent (cloudsRoot.transform, true);
 			}
-
 		}
 
 					

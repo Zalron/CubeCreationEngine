@@ -13,6 +13,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   title: 
   renderType: 2
+  opaque: 0
   textureTop: {fileID: 2800000, guid: 9ee79894b271342b7a5188e2778f8c02, type: 3}
   textureTopEmission: {fileID: 0}
   textureTopNRM: {fileID: 2800000, guid: fd3afbde875c84951b9fb24ce0006d3a, type: 3}
@@ -42,16 +43,17 @@ MonoBehaviour:
     rgba: 4294967295
   colorVariation: 0.5
   pickupSound: {fileID: 0}
-  buildSound: {fileID: 0}
+  buildSound: {fileID: 8300000, guid: d8c0c30b8f0974325b9b8aba85266fb0, type: 3}
   footfalls: []
   jumpSound: {fileID: 0}
   landingSound: {fileID: 0}
   impactSound: {fileID: 0}
-  destructionSound: {fileID: 0}
+  destructionSound: {fileID: 8300000, guid: 08b1ddc2739ec46d8977a71773ce4b0b, type: 3}
   resistancePoints: 15
   hidden: 0
   canBeCollected: 1
   dropItem: {fileID: 0}
+  icon: {fileID: 0}
   navigatable: 1
   windAnimation: 1
   model: {fileID: 0}
@@ -60,8 +62,11 @@ MonoBehaviour:
   receiveShadows: 1
   createGameObject: 0
   offset: {x: 0, y: 0, z: 0}
+  offsetRandom: 0
+  offsetRandomRange: {x: 0, y: 0, z: 0}
   scale: {x: 1, y: 1, z: 1}
   rotation: {x: 0, y: 0, z: 0}
+  rotationRandomY: 0
   promotesTo: {fileID: 0}
   spreads: 1
   drains: 1
@@ -78,3 +83,4 @@ MonoBehaviour:
   placeFacingPlayer: 1
   triggerEnterEvent: 0
   triggerWalkEvent: 0
+  showFoam: 1

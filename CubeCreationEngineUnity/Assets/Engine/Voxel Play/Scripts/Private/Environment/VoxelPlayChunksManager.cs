@@ -54,12 +54,9 @@ namespace VoxelPlay {
 			public bool used;
 		}
 
-
-
 		const int WORLD_SIZE_WIDTH = 10000;
 		const int WORLD_SIZE_DEPTH = 10000;
 		const int WORLD_SIZE_HEIGHT = 1000;
-
 
 		// Chunk Creation
 		[NonSerialized]
@@ -104,6 +101,53 @@ namespace VoxelPlay {
 
 		#region Terrain engine initialization
 
+		void InitHeightMap () {
+			if (heightMapCache == null) {
+				heightMapCache = new HeightMapCache ();
+			} else {
+				heightMapCache.Clear ();
+			}
+		}
+
+		void InitBiomes () {
+			biomeLookUp = new BiomeDefinition[441]; // 21 * 21
+			if (world == null)
+				return;
+			if (world.biomes == null)
+				return;
+			
+			for (int b = 0; b < world.biomes.Length; b++) {
+				BiomeDefinition biome = world.biomes [b];
+				if (biome == null || biome.zones == null)
+					continue;
+				for (int z = 0; z < biome.zones.Length; z++) {
+					BiomeZone zone = biome.zones [z];
+					for (int elevation = 0; elevation <= 20; elevation++) {
+						float e = elevation / 20f;
+						for (int moisture = 0; moisture <= 20; moisture++) {
+							float m = moisture / 20f;
+							if (e >= zone.elevationMin && e <= zone.elevationMax && m >= zone.moistureMin && m <= zone.moistureMax) {
+								biomeLookUp [elevation * 21 + moisture] = biome;
+							}
+						}
+					}
+				}
+				if (biome.ores == null) {
+					biome.ores = new BiomeOre[0];
+				}
+			}
+
+			SetBiomeDefaultColors (false);
+		}
+
+		public void NotifyTerrainGeneratorConfigurationChanged () {
+			InitHeightMap ();
+			InitBiomes ();
+			if (world != null && world.terrainGenerator != null) {
+				world.terrainGenerator.Initialize ();
+			}
+		}
+
 		void InitChunkManager () {
 
 			if (chunksPool == null) {
@@ -118,12 +162,9 @@ namespace VoxelPlay {
 			tempLightmapPos = new int[16 * 16 * 16 * 9];
 
 			InitOctrees ();
+			InitHeightMap ();
+			InitBiomes ();
 
-			if (heightMapCache == null) {
-				heightMapCache = new HeightMapCache ();
-			} else {
-				heightMapCache.Clear ();
-			}
 			NoiseTools.seedOffset = WorldRand.GetVector3 (Misc.vector3zero, 1024);
 			frustumCheckIteration = 1;
 			forceChunkSqrDistance = (forceChunkDistance * 16) * (forceChunkDistance * 16);
@@ -133,31 +174,7 @@ namespace VoxelPlay {
 				updatedChunks.Clear ();
 			}
 
-			// Setup biome lookup table
-			biomeLookUp = new BiomeDefinition[441]; // 21 * 21
 			if (world != null) {
-				if (world.biomes != null) {
-					for (int b = 0; b < world.biomes.Length; b++) {
-						BiomeDefinition biome = world.biomes [b];
-						if (biome == null || biome.zones == null)
-							continue;
-						for (int z = 0; z < biome.zones.Length; z++) {
-							BiomeZone zone = biome.zones [z];
-							for (int elevation = 0; elevation <= 20; elevation++) {
-								float e = elevation / 20f;
-								for (int moisture = 0; moisture <= 20; moisture++) {
-									float m = moisture / 20f;
-									if (e >= zone.elevationMin && e <= zone.elevationMax && m >= zone.moistureMin && m <= zone.moistureMax) {
-										biomeLookUp [elevation * 20 + moisture] = biome;
-									}
-								}
-							}
-						}
-						if (biome.ores == null)
-							biome.ores = new BiomeOre[0];
-					}
-				}
-
 				if (world.terrainGenerator == null) {
 					world.terrainGenerator = Resources.Load<TerrainDefaultGenerator> ("VoxelPlay/Defaults/NullTerrainGenerator");
 				}
@@ -311,6 +328,16 @@ namespace VoxelPlay {
 
 			ClearStats ();
 
+			// reset voxel definitions state values
+			if (voxelDefinitions != null) {
+				for (int k = 0; k < voxelDefinitions.Length; k++) {
+					VoxelDefinition vd = voxelDefinitions [k];
+					if (vd != null) {
+						vd.Reset ();
+					}
+				}
+			}
+
 			initialized = false;
 
 		}
@@ -419,8 +446,13 @@ namespace VoxelPlay {
 								continue;
 							if (chunk.isPopulated) {
 								// If this chunk has been created but not rendered yet, request it
-								if (chunk.renderState == ChunkRenderState.Pending && !chunk.inqueue) {
-									ChunkRequestRefresh (chunk, false, true);
+								//	if (chunk.renderState == ChunkRenderState.Pending && !chunk.inqueue) {
+								if (chunk.renderState != ChunkRenderState.RenderingComplete || !chunk.mr.enabled) {
+									if (chunk.inqueue) {
+										chunk.needsMeshRebuild = true;
+									} else {
+										ChunkRequestRefresh (chunk, false, true);
+									}
 								}
 								continue;
 							}
@@ -543,7 +575,7 @@ namespace VoxelPlay {
 			cuboidMax.z = cuboidCenter.z + cuboid.extents;
 
 			bool inFrustum;
-			if (onlyGenerateInFrustum) {
+			if (onlyRenderInFrustum) {
 				inFrustum = GeometryUtilityNonAlloc.TestPlanesAABB (frustumPlanesNormals, frustumPlanesDistances, ref cuboidMin, ref cuboidMax);
 			} else {
 				inFrustum = true;
@@ -576,12 +608,18 @@ namespace VoxelPlay {
 						return;
 					if (chunk.isPopulated) {
 						// If this chunk has been created but not rendered yet, request it
-						if (chunk.renderState == ChunkRenderState.Pending && !chunk.inqueue) {
-							ChunkRequestRefresh (chunk, false, true);
+						//	if (chunk.renderState == ChunkRenderState.Pending && !chunk.inqueue) {
+						if (chunk.renderState != ChunkRenderState.RenderingComplete || !chunk.mr.enabled) {
+							if (chunk.inqueue) {
+								chunk.needsMeshRebuild = true;
+							} else {
+								ChunkRequestRefresh (chunk, false, true);
+							}
 						}
 						return;
 					}
 				}
+
 				CreateChunk (hash, chunkX, chunkY, chunkZ, false);
 				chunkCreationCountThisFrame++;
 			}
@@ -589,7 +627,7 @@ namespace VoxelPlay {
 		}
 
 		/// <summary>
-		/// Gets heightmap info on a given position
+		/// Gets heightmap info on a given position. This method only works at runtime. Use GetTerainInfo() in Editor.
 		/// </summary>
 		/// <returns>The height map info.</returns>
 		/// <param name="x">The x coordinate.</param>
@@ -611,7 +649,7 @@ namespace VoxelPlay {
 					moisture = 1f;
 				else if (moisture < 0f)
 					moisture = 0f;
-				int biomeIndex = (int)(altitude * 20) * 20 + (int)(moisture * 20f);
+				int biomeIndex = (int)(altitude * 20) * 21 + (int)(moisture * 20f);
 				heights [heightsIndex].groundLevel = (int)(altitude * tg.maxHeight);
 				heights [heightsIndex].moisture = moisture;
 				heights [heightsIndex].biome = biomeLookUp [biomeIndex];
@@ -646,7 +684,7 @@ namespace VoxelPlay {
 							moisture = 1f;
 						else if (moisture < 0f)
 							moisture = 0f;
-						int biomeIndex = (int)(altitude * 20) * 20 + (int)(moisture * 20f);
+						int biomeIndex = (int)(altitude * 20) * 21 + (int)(moisture * 20f);
 						heights [heightsIndex].groundLevel = (int)(altitude * tg.maxHeight);
 						heights [heightsIndex].moisture = moisture;
 						heights [heightsIndex].biome = biomeLookUp [biomeIndex];
@@ -674,12 +712,12 @@ namespace VoxelPlay {
 				chunk.ignoreFrustum = true;
 			}
 
-			if (chunk.inqueue) {
-				return;
-			}
-
 			if (clearLightmap) {
 				chunk.ClearLightmap (noLightValue);
+			}
+
+			if (chunk.inqueue) {
+				return;
 			}
 
 			// Get free linked chunk for rendering
@@ -705,8 +743,27 @@ namespace VoxelPlay {
 			ShowMessage ("Out of space in linkedChunks buffer.");
 		}
 
+
+		void ChunkRequestRefresh (Bounds bounds, bool clearLightmap, bool refreshMesh) {
+			Vector3 position;
+			for (float y = bounds.max.y; y >= bounds.min.y; y -= 16f) {
+				position.y = y;
+				for (float z = bounds.min.z; z <= bounds.max.z; z += 16f) {
+					position.z = z;
+					for (float x = bounds.min.x; x <= bounds.max.x; x += 16f) {
+						position.x = x;
+						VoxelChunk chunk;
+						if (GetChunk (position, out chunk, true)) {
+							ChunkRequestRefresh (chunk, clearLightmap, refreshMesh);
+						}
+					}
+				}
+			}
+		}
+
+
 		/// <summary>
-		/// Monitors the render queue. This function calls UpdateChunkRR which computes lightmap, occlusion and creates the actual mesh
+		/// Monitors the render queue.
 		/// </summary>
 		void CheckRenderChunkQueue (long endTime) {
 
@@ -727,7 +784,7 @@ namespace VoxelPlay {
 					doRefresh = true;
 				}
 				if (doRefresh) {
-					ComputeLightmap (chunk, false);
+					ComputeLightmap (chunk);
 					if (chunk.needsMeshRebuild && chunk.renderingFrame != Time.frameCount) { 
 						if (chunk.renderState == ChunkRenderState.Pending) {
 							chunk.renderState = ChunkRenderState.RenderingRequested;
@@ -816,12 +873,12 @@ namespace VoxelPlay {
 		/// </summary>
 		/// <param name="chunk">Chunk.</param>
 		void UpdateChunkRR (VoxelChunk chunk) {
-			ComputeLightmap (chunk, true);
-			if (chunk.renderingFrame != Time.frameCount) { // !updatedChunks.Contains (chunk)) {
+			if (chunk.renderingFrame != Time.frameCount) {
 				chunk.inqueue = false;
 				if (chunk.renderState == ChunkRenderState.Pending) {
 					chunk.renderState = ChunkRenderState.RenderingRequested;
 				}
+				chunk.needsLightmapRebuild = true;
 				chunk.renderingFrame = Time.frameCount;
 				updatedChunks.Add (chunk);
 			}
@@ -843,6 +900,10 @@ namespace VoxelPlay {
 				UploadMeshData (meshJobMeshUploadIndex);
 				VoxelChunk chunk = meshJobs [meshJobMeshUploadIndex].chunk;
 				chunk.needsMeshRebuild = false;
+				if (chunk.needsLightmapRebuild) {
+					chunk.needsLightmapRebuild = false;
+					RefreshNineChunks (chunk);
+				}
 			}
 
 			if (finishedUploading) {
@@ -855,7 +916,13 @@ namespace VoxelPlay {
 							chunk.needsMeshRebuild = true; // delay mesh update till next frame due to new chunk or nearby chunks lightmap changes or modifications
 						} else {
 							chunk.transform.position = chunk.position;
-							CreateChunkMeshJob (chunk);
+							if (!CreateChunkMeshJob (chunk)) {
+								// can't create more mesh jobs - remove processes jobs from the update list and exit
+								for (int j = 0; j < k; j++) {
+									updatedChunks.RemoveAt (0);
+								}
+								return;
+							}
 						}
 					}
 					updatedChunks.Clear ();

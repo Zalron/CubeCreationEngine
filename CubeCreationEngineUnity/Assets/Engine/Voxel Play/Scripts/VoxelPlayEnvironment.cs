@@ -8,6 +8,7 @@ namespace VoxelPlay {
 
 	public delegate float SDF (Vector3 worldPosition);
 
+	[HelpURL ("https://kronnect.freshdesk.com/support/solutions/articles/42000001712-voxel-play-environment")]
 	public partial class VoxelPlayEnvironment : MonoBehaviour {
 
 		public WorldDefinition world;
@@ -34,6 +35,9 @@ namespace VoxelPlay {
 		public int layerParticles = 2;
 		public int layerVoxels = 1;
 		public bool enableLoadingPanel = true;
+		public string loadingText = "Initializing...";
+		public float initialWaitTime = 0f;
+		public string initialWaitText = "Loading World...";
 
 		public bool loadSavedGame;
 		public string saveFilename = "save0001";
@@ -71,6 +75,8 @@ namespace VoxelPlay {
 
 		public bool doubleSidedGlass = true;
 
+		public bool transparentBling = true;
+
 		[NonSerialized]
 		public Camera cameraMain;
 
@@ -90,6 +96,8 @@ namespace VoxelPlay {
 		public bool enableTinting = false;
 
 		public bool enableOutline = false;
+
+		public bool enableCurvature;
 
 		public Color outlineColor = new Color (1, 1, 1, 0.5f);
 
@@ -123,7 +131,7 @@ namespace VoxelPlay {
 		public int maxTreesPerFrame = 10;
 		public int maxBushesPerFrame = 10;
 		public bool multiThreadGeneration = true;
-		public bool onlyGenerateInFrustum = true;
+		public bool lowMemoryMode;
 		public bool onlyRenderInFrustum = true;
 
 		public bool enableColliders = true;
@@ -205,6 +213,11 @@ namespace VoxelPlay {
 		public event VoxelEvent OnVoxelDestroyed;
 
 		/// <summary>
+		/// Tiggered just before a voxel is placed
+		/// </summary>
+		public event VoxelPlaceEvent OnVoxelBeforePlace;
+
+		/// <summary>
 		/// Triggered just before a recoverable voxel is created.
 		/// </summary>
 		public event VoxelDropItemEvent OnVoxelBeforeDropItem;
@@ -218,6 +231,11 @@ namespace VoxelPlay {
 		/// Triggered after the contents of a chunk changes (ie. placing a new voxel)
 		/// </summary>
 		public event VoxelChunkEvent OnChunkChanged;
+
+		/// <summary>
+		/// Triggered when a chunk is going to be unloaded (use the canUnload argument to deny the operation)
+		/// </summary>
+		public event VoxelChunkUnloadEvent OnChunkUnload;
 
 		/// <summary>
 		/// Triggered after a torch is placed
@@ -264,6 +282,21 @@ namespace VoxelPlay {
 		/// Triggered when requesting a refresh of the light buffers
 		/// </summary>
 		public event VoxelLightRefreshEvent OnLightRefreshRequest;
+
+		/// <summary>
+		/// Triggered when some settings from Voxel Play Environment are changed
+		/// </summary>
+		public event VoxelPlayEvent OnSettingsChanged;
+
+		/// <summary>
+		/// Triggered when a model starts building
+		/// </summary>
+		public event VoxelPlayModelBuildEvent OnModelBuildStart;
+
+		/// <summary>
+		/// Triggered when a model starts building
+		/// </summary>
+		public event VoxelPlayModelBuildEvent OnModelBuildEnd;
 
 		#endregion
 
@@ -319,8 +352,10 @@ namespace VoxelPlay {
 			get {
 				if (characterController != null) {
 					return characterController.gameObject;
-				} else {
+				} else if (cameraMain != null) {
 					return cameraMain.gameObject;
+				} else {
+					return null;
 				}
 			}
 		}
@@ -461,8 +496,9 @@ namespace VoxelPlay {
 		/// <param name="hitInfo">Hit info.</param>
 		/// <param name="maxDistance">Max distance.</param>
 		/// <param name="minOpaque">Optionally limit the rayhit to voxels with certain opaque factor (15 = solid/full opaque, 3 = cutout, 2 = water, 0 = grass).</param>
-		public bool RayCast (Vector3 origin, Vector3 direction, out VoxelHitInfo hitInfo, float maxDistance = 0, byte minOpaque = 0) {
-			return RayCastFast (origin, direction, out hitInfo, maxDistance, false, minOpaque);
+		/// <param name="colliderTypes">Optionally specify which colliders can be used</param>
+		public bool RayCast (Vector3 origin, Vector3 direction, out VoxelHitInfo hitInfo, float maxDistance = 0, byte minOpaque = 0, ColliderTypes colliderTypes = ColliderTypes.AnyCollider) {
+			return RayCastFast (origin, direction, out hitInfo, maxDistance, false, minOpaque, colliderTypes);
 		}
 
 		/// <summary>
@@ -498,13 +534,25 @@ namespace VoxelPlay {
 			}
 		}
 
+
+		/// <summary>
+		/// Start flooding at a given position
+		/// </summary>
+		/// <param name="position">Position.</param>
+		public void AddWaterFlood (ref Vector3 position, VoxelDefinition waterVoxel, int lifeTime = 24)
+		{
+			if (enableWaterFlood && lifeTime > 0 && waterVoxel != null) {
+				waterFloodSources.Add (ref position, waterVoxel, lifeTime);
+			}
+		}
+
 		[NonSerialized]
 		public bool enableWaterFlood = true;
 
 		/// <summary>
 		/// Returns true if there a solid block at a position
 		/// </summary>
-		/// <returns><c>true</c> if this instance is water at position; otherwise, <c>false</c>.</returns>
+		/// <returns><c>true</c> if this instance is occupied by a solid voxel it returns true; otherwise, <c>false</c>.</returns>
 		public bool IsWallAtPosition (Vector3 position) {
 			VoxelChunk chunk;
 			int voxelIndex;
@@ -989,9 +1037,10 @@ namespace VoxelPlay {
 		/// </summary>
 		/// <param name="vd">Vd.</param>
 		public void AddVoxelDefinition (VoxelDefinition vd) {
-            if (vd == null) return;
+			if (vd == null)
+				return;
 			// Check if voxelType is not added
-			if (vd.index <= 0) {
+			if (vd.index <= 0 && sessionUserVoxels != null) {
 				sessionUserVoxels.Add (vd);
 				requireTextureArrayUpdate = true;
 			}
@@ -1185,6 +1234,24 @@ namespace VoxelPlay {
 			return position;
 		}
 
+
+
+		/// <summary>
+		/// Gets the voxel position in world space coordinates.
+		/// </summary>
+		/// <returns>The voxel position.</returns>
+		/// <param name="chunkPosition">Chunk position.</param>
+		/// <param name="px">The x index of the voxel in the chunk.</param>
+		/// <param name="py">The y index of the voxel in the chunk.</param>
+		/// <param name="pz">The z index of the voxel in the chunk.</param>
+		public Vector3 GetVoxelPosition (Vector3 chunkPosition, int px, int py, int pz) {
+			Vector3 position;
+			position.x = chunkPosition.x - 7.5f + px;
+			position.y = chunkPosition.y - 7.5f + py;
+			position.z = chunkPosition.z - 7.5f + pz;
+			return position;
+		}
+
 		/// <summary>
 		/// Given a voxel index, returns its x, y, z position inside the chunk
 		/// </summary>
@@ -1331,6 +1398,8 @@ namespace VoxelPlay {
 		/// <param name="voxelType">Voxel.</param>
 		/// <param name="playSound">If set to <c>true</c> play sound.</param>
 		public void VoxelPlace (Vector3 position, VoxelDefinition voxelType, bool playSound = false) {
+			if (voxelType == null)
+				return;
 			VoxelPlace (position, voxelType, playSound, voxelType.tintColor);
 		}
 
@@ -1972,7 +2041,7 @@ namespace VoxelPlay {
 		/// <param name="direction">Direction.</param>
 		/// <param name="voxelType">Voxel definition.</param>
 		public void VoxelThrow (Vector3 position, Vector3 direction, float velocity, VoxelDefinition voxelType, Color32 color) {
-			GameObject voxelGO = CreateRecoverableVoxel (position, voxelType, color, GetVoxelLight (position));
+			GameObject voxelGO = CreateRecoverableVoxel (position, voxelType, color);
 			if (voxelGO == null)
 				return;
 			Rigidbody rb = voxelGO.GetComponent<Rigidbody> ();
@@ -2204,7 +2273,7 @@ namespace VoxelPlay {
 							if (chunk == null)
 								continue;
 							if (chunk.isPopulated) {
-								if (renderChunks && chunk.renderState != ChunkRenderState.RenderingComplete) {
+								if (renderChunks && (chunk.renderState != ChunkRenderState.RenderingComplete || !chunk.mr.enabled)) {
 									ChunkRequestRefresh (chunk, false, true, true);
 								}
 								continue;
@@ -2219,6 +2288,20 @@ namespace VoxelPlay {
 			}
 		}
 
+
+		/// <summary>
+		/// Returns the biome given altitude and moisture.
+		/// </summary>
+		/// <returns>The biome.</returns>
+		/// <param name="altitude">Altitude in the 0-1 range.</param>
+		/// <param name="moisture">Moisture in the 0-1 range.</param>
+		public BiomeDefinition GetBiome (float altitude, float moisture) {
+			int biomeIndex = (int)(altitude * 20) * 21 + (int)(moisture * 20f);
+			if (biomeIndex >= 0 && biomeIndex < biomeLookUp.Length) {
+				return biomeLookUp [biomeIndex];
+			}
+			return null;
+		}
 
 		/// <summary>
 		/// Gets the terrain height under a given position, optionally including water
@@ -2239,7 +2322,20 @@ namespace VoxelPlay {
 		/// Gets info about the terrain on a given position
 		/// </summary>
 		public HeightMapInfo GetTerrainInfo (Vector3 position) {
-			return GetHeightMapInfoFast (position.x, position.z);
+			return GetTerrainInfo (position.x, position.z);
+		}
+
+		/// <summary>
+		/// Gets info about the terrain on a given position
+		/// </summary>
+		public HeightMapInfo GetTerrainInfo (float x, float z) {
+			if (heightMapCache == null) {
+				InitHeightMap ();
+			}
+			if (biomeLookUp == null || biomeLookUp.Length == 0) {
+				InitBiomes ();
+			}
+			return GetHeightMapInfoFast (x, z);
 		}
 
 
@@ -2266,7 +2362,7 @@ namespace VoxelPlay {
 			}
 
 			if (GetVoxelIndex (position, out chunk, out voxelIndex, false)) {
-				if (chunk.voxels [voxelIndex].opaque < FULL_OPAQUE) {
+				if (chunk.voxels [voxelIndex].lightMesh != 0 || chunk.voxels [voxelIndex].opaque < FULL_OPAQUE) {
 					return chunk.voxels [voxelIndex].lightMesh / 15f;
 				}
 				// voxel has contents try to retrieve light information from nearby voxels
@@ -2274,8 +2370,20 @@ namespace VoxelPlay {
 				if (nearby < chunk.voxels.Length && chunk.voxels [nearby].opaque < FULL_OPAQUE) {
 					return chunk.voxels [nearby].lightMesh / 15f;
 				}
-				nearby = voxelIndex - ONE_Y_ROW;
+				nearby = voxelIndex - ONE_Z_ROW;
 				if (nearby >= 0 && chunk.voxels [nearby].opaque < FULL_OPAQUE) {
+					return chunk.voxels [nearby].lightMesh / 15f;
+				}
+				nearby = voxelIndex - 1;
+				if (nearby >= 0 && chunk.voxels [nearby].opaque < FULL_OPAQUE) {
+					return chunk.voxels [nearby].lightMesh / 15f;
+				}
+				nearby = voxelIndex + ONE_Z_ROW;
+				if (nearby < chunk.voxels.Length && chunk.voxels [nearby].opaque < FULL_OPAQUE) {
+					return chunk.voxels [nearby].lightMesh / 15f;
+				}
+				nearby = voxelIndex + 1;
+				if (nearby < chunk.voxels.Length && chunk.voxels [nearby].opaque < FULL_OPAQUE) {
 					return chunk.voxels [nearby].lightMesh / 15f;
 				}
 				return chunk.voxels [voxelIndex].lightMesh / 15f;
@@ -2411,7 +2519,6 @@ namespace VoxelPlay {
 			#endif
 
 			Vector3 pos;
-			VoxelChunk lastChunk = null;
 			int maxY = colors.GetUpperBound (0) + 1;
 			int maxZ = colors.GetUpperBound (1) + 1;
 			int maxX = colors.GetUpperBound (2) + 1;
@@ -2431,17 +2538,13 @@ namespace VoxelPlay {
 						int voxelIndex;
 						if (GetVoxelIndex (pos, out chunk, out voxelIndex)) {
 							chunk.voxels [voxelIndex].Set (vd, color);
-							if (chunk != lastChunk) {
-								lastChunk = chunk;
-								chunk.modified = true;
-								if (!lastChunk.inqueue) {
-									ChunkRequestRefresh (lastChunk, true, true);
-								}
-							}
+							chunk.modified = true;
 						}
 					}
 				}
 			}
+			Bounds bounds = new Bounds (new Vector3 (position.x, position.y + maxY / 2, position.z), new Vector3 (maxX + 2, maxY + 2, maxZ + 2));
+			ChunkRequestRefresh (bounds, true, true);
 		}
 
 
@@ -2453,7 +2556,6 @@ namespace VoxelPlay {
 		/// <param name="colors">3-dimensional array of colors (y/z/x).</param>
 		public void ModelPlace (Vector3 position, VoxelDefinition[,,] voxels, Color[,,] colors = null) {
 			Vector3 pos;
-			VoxelChunk lastChunk = null;
 			int maxY = voxels.GetUpperBound (0) + 1;
 			int maxZ = voxels.GetUpperBound (1) + 1;
 			int maxX = voxels.GetUpperBound (2) + 1;
@@ -2485,18 +2587,14 @@ namespace VoxelPlay {
 								} else {
 									chunk.voxels [voxelIndex].Set (vd);
 								}
-								if (chunk != lastChunk) {
-									lastChunk = chunk;
-									chunk.modified = true;
-									if (!lastChunk.inqueue) {
-										ChunkRequestRefresh (lastChunk, true, true);
-									}
-								}
+								chunk.modified = true;
 							}
 						}
 					}
 				}
 			}
+			Bounds bounds = new Bounds (new Vector3 (position.x, position.y + maxY / 2, position.z), new Vector3 (maxX + 2, maxY + 2, maxZ + 2));
+			ChunkRequestRefresh (bounds, true, true);
 		}
 
 
@@ -2511,12 +2609,25 @@ namespace VoxelPlay {
 			for (int b = 0; b < count; b++) {
 				int bitIndex = bits [b].voxelIndex;
 				VoxelDefinition vd = bits [b].voxelDefinition ?? defaultVoxel;
-				chunk.voxels [bitIndex].Set (vd, bits [b].colorOrDefault);
+				chunk.voxels [bitIndex].Set (vd, bits [b].finalColor);
 			}
 			chunk.modified = true;
-			ChunkRequestRefresh (chunk, true, true);
+			RefreshNineChunks (chunk);
 		}
 
+		/// <summary>
+		/// Places a model in the world at the given position iteratively
+		/// </summary>
+		/// <param name="position">Position.</param>
+		/// <param name="model">Model Definition.</param>
+		/// <param name="rotationDegrees">0, 90, 180 or 270 degree rotation. A value of 360 means random rotation.</param>
+		/// <param name="colorBrightness">Optionally pass a color brightness value. This value is multiplied by the voxel color.</param>
+		/// <param name="fitTerrain">If set to true, vegetation and trees are prevented and some space is flattened around the model.</param>
+		/// <param name="indexStart">Specifies the starting index of the model definition (used to incrementally build)</param>
+		/// <param name="indexEnd">Specifies the end index of the model definition (used to incrementally build)</param>
+		public void ModelPlace (Vector3 position, ModelDefinition model, float buildDuration, int rotationDegrees = 0, float colorBrightness = 1f, bool fitTerrain = false, VoxelPlayModelBuildEvent callback = null) {
+			StartCoroutine (ModelPlaceWithDuration (position, model, buildDuration, rotationDegrees, colorBrightness, fitTerrain, callback));
+		}
 
 		/// <summary>
 		/// Places a model in the world at the given position
@@ -2527,11 +2638,19 @@ namespace VoxelPlay {
 		/// <param name="colorBrightness">Optionally pass a color brightness value. This value is multiplied by the voxel color.</param>
 		/// <param name="fitTerrain">If set to true, vegetation and trees are prevented and some space is flattened around the model.</param>
 		/// <param name="indices">Optional user-provided list. If provided, it will contain the indices and positions of all visible voxels in the model</param>
-		public void ModelPlace (Vector3 position, ModelDefinition model, int rotationDegrees = 0, float colorBrightness = 1f, bool fitTerrain = false, List<VoxelIndex> indices = null) {
+		/// <param name="indexStart">Specifies the starting index of the model definition (used to incrementally build)</param>
+		/// <param name="indexEnd">Specifies the end index of the model definition (used to incrementally build)</param>
+		public void ModelPlace (Vector3 position, ModelDefinition model, int rotationDegrees = 0, float colorBrightness = 1f, bool fitTerrain = false, List<VoxelIndex> indices = null, int indexStart = -1, int indexEnd = -1) {
 
 			if (model == null)
 				return;
-
+			if (indexStart < 0) {
+				indexStart = 0;
+			}
+			if (indexEnd < 0) {
+				indexEnd = model.bits.Length - 1;
+			}
+				
 			Vector3 pos;
 			int modelOneYRow = model.sizeZ * model.sizeX;
 			int modelOneZRow = model.sizeX;
@@ -2558,7 +2677,8 @@ namespace VoxelPlay {
 			VoxelIndex index = new VoxelIndex ();
 			VoxelChunk lastChunk = null;
 			int tmp;
-			for (int b = 0; b < model.bits.Length; b++) {
+
+			for (int b = indexStart; b <= indexEnd; b++) {
 				int bitIndex = model.bits [b].voxelIndex;
 				int py = bitIndex / modelOneYRow;
 				int remy = bitIndex - py * modelOneYRow;
@@ -2568,17 +2688,16 @@ namespace VoxelPlay {
 				case 90:
 					tmp = px;
 					px = halfSizeZ - pz;
-					pz = tmp - halfSizeX;
+					pz = halfSizeX - tmp;
 					break;
 				case 180:
-					tmp = px;
-					px = pz - halfSizeZ;
-					pz = tmp - halfSizeX;
+					px = halfSizeX - px;
+					pz = halfSizeZ - pz;
 					break;
 				case 270:
 					tmp = px;
 					px = pz - halfSizeZ;
-					pz = halfSizeX - tmp;
+					pz = tmp - halfSizeX;
 					break;
 				default:
 					px -= halfSizeX;
@@ -2593,7 +2712,7 @@ namespace VoxelPlay {
 				VoxelChunk chunk;
 				int voxelIndex;
 				if (GetVoxelIndex (pos, out chunk, out voxelIndex)) {
-					Color32 color = model.bits [b].colorOrDefault;
+					Color32 color = model.bits [b].finalColor;
 					VoxelDefinition vd = model.bits [b].voxelDefinition ?? defaultVoxel;
 					bool emptyVoxel = model.bits [b].isEmpty;
 					if (emptyVoxel) {
@@ -2707,6 +2826,48 @@ namespace VoxelPlay {
 
 
 		/// <summary>
+		/// Converts a model definition into a regular gameobject
+		/// </summary>
+		public GameObject ModelCreateGameObject (ModelDefinition modelDefinition) {
+			return ModelCreateGameObject (modelDefinition, Misc.vector3zero, Misc.vector3one);
+		}
+
+
+		/// <summary>
+		/// Converts a model definition into a regular gameobject
+		/// </summary>
+		public GameObject ModelCreateGameObject (ModelDefinition modelDefinition, Vector3 offset, Vector3 scale) {
+			return VoxelPlayConverter.GenerateVoxelObject (modelDefinition, offset, scale);
+		}
+
+
+		/// <summary>
+		/// Shows an hologram of a model definition at a given position
+		/// </summary>
+		/// <returns>The highlight.</returns>
+		/// <param name="modelDefinition">Model definition.</param>
+		/// <param name="position">Position.</param>
+		public GameObject ModelHighlight (ModelDefinition modelDefinition, Vector3 position) {
+			if (modelDefinition.modelGameObject == null) {
+				modelDefinition.modelGameObject = ModelCreateGameObject (modelDefinition);
+			}
+			GameObject modelGO = modelDefinition.modelGameObject;
+			if (modelGO == null) {
+				return null;
+			}
+
+			MeshRenderer renderer = modelGO.GetComponent<MeshRenderer> ();
+			renderer.sharedMaterial = modelHighlightMat;
+
+			modelGO.transform.position = position;
+			modelGO.SetActive (true);
+
+			return modelGO;
+		}
+
+
+
+		/// <summary>
 		/// Reloads all world textures
 		/// </summary>
 		public void ReloadTextures () {
@@ -2751,7 +2912,7 @@ namespace VoxelPlay {
 		/// <returns>The item of requested category and type.</returns>
 		/// <param name="category">Category.</param>
 		/// <param name="voxelType">Voxel type.</param>
-		public ItemDefinition GetItemByType (ItemCategory category, VoxelDefinition voxelType = null) {
+		public ItemDefinition GetItemDefinition (ItemCategory category, VoxelDefinition voxelType = null) {
 			if (allItems == null)
 				return null;
 			int allItemsCount = allItems.Count;
@@ -2761,6 +2922,45 @@ namespace VoxelPlay {
 				}
 			}
 			return null;
+		}
+
+
+		/// <summary>
+		/// Returns the item definition by its name
+		/// </summary>
+		public ItemDefinition GetItemDefinition (string name) {
+			ItemDefinition id;
+			itemDefinitionsDict.TryGetValue (name, out id);
+			return id;
+		}
+
+
+
+		/// <summary>
+		/// Creates a recoverable item and throws it at given position, direction and strength
+		/// </summary>
+		/// <param name="position">Position in world space.</param>
+		/// <param name="direction">Direction.</param>
+		/// <param name="itemDefinition">Item definition.</param>
+		public GameObject ItemThrow (Vector3 position, Vector3 direction, float velocity, ItemDefinition itemDefinition) {
+			GameObject itemGO = CreateRecoverableItem (position, itemDefinition);
+			if (itemGO == null)
+				return null;
+			Rigidbody rb = itemGO.GetComponent<Rigidbody> ();
+			if (rb != null) {
+				rb.velocity = direction * velocity;
+			}
+			return itemGO;
+		}
+
+
+		/// <summary>
+		/// Creates a persistent item by name
+		/// </summary>
+		/// <returns><c>true</c>, if item was spawned, <c>false</c> otherwise.</returns>
+		public GameObject ItemSpawn (string itemDefinitionName, Vector3 position, int quantity = 1) {
+			ItemDefinition id = GetItemDefinition (itemDefinitionName);
+			return CreateRecoverableItem (position, id, quantity);
 		}
 
 

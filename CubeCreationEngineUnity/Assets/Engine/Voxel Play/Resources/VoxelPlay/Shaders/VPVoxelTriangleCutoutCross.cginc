@@ -19,7 +19,7 @@ struct v2f {
 v2f vert (appdata v) {
 	v2f o;
 	float3 worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
-
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldPos)
 	float disp = sin(worldPos.x + _Time.w) * 0.01;
 	v.vertex.x += disp * v.uv.y;
 

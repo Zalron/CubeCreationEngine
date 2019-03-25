@@ -27,7 +27,7 @@
 			#pragma multi_compile _ VOXELPLAY_USE_AA
 			#pragma multi_compile _ VOXELPLAY_USE_OUTLINE
 			#pragma multi_compile _ VOXELPLAY_PIXEL_LIGHTS
-			#define SHINING
+			#pragma multi_compile _ VOXELPLAY_TRANSP_BLING
 			#include "VPVoxelTriangleTransp.cginc"
 			ENDCG
 		}

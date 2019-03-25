@@ -55,9 +55,9 @@ namespace VoxelPlay.GPUInstancing {
 			}
 			InstancedVoxel instancedVoxel = new InstancedVoxel ();
 			instancedVoxel.voxelDefinition = voxelDefinition;
+			instancedVoxel.meshSize = voxelDefinition.mesh.bounds.size;
 			instancedVoxel.position = position;
-			instancedVoxel.rotation = rotation;
-			instancedVoxel.scale = scale;
+			instancedVoxel.matrix.SetTRS (position, rotation, scale);
 			instancedVoxel.color = chunk.voxels [voxelIndex].color;
 			instancedVoxel.light = chunk.voxels [voxelIndex].lightMesh / 15f;
 			instancedChunk.instancedVoxels.Add (instancedVoxel);
@@ -98,12 +98,19 @@ namespace VoxelPlay.GPUInstancing {
 						}
 					}
 					int pos = batch.instancesCount++;
-					batch.matrices [pos].SetTRS (voxels [i].position, voxels [i].rotation, voxels [i].scale);
+					// just copying the matrix triggers lot of expensive memcpy() calls so we directly copy the fields
+//					batch.matrices[pos] = voxels[i].matrix;
+					batch.matrices [pos].m00 = voxels [i].matrix.m00; batch.matrices [pos].m01 = voxels [i].matrix.m01; batch.matrices [pos].m02 = voxels [i].matrix.m02; batch.matrices [pos].m03 = voxels [i].matrix.m03;
+					batch.matrices [pos].m10 = voxels [i].matrix.m10; batch.matrices [pos].m11 = voxels [i].matrix.m11; batch.matrices [pos].m12 = voxels [i].matrix.m12; batch.matrices [pos].m13 = voxels [i].matrix.m13;
+					batch.matrices [pos].m20 = voxels [i].matrix.m20; batch.matrices [pos].m21 = voxels [i].matrix.m21; batch.matrices [pos].m22 = voxels [i].matrix.m22; batch.matrices [pos].m23 = voxels [i].matrix.m23;
+					batch.matrices [pos].m30 = voxels [i].matrix.m30; batch.matrices [pos].m31 = voxels [i].matrix.m31; batch.matrices [pos].m32 = voxels [i].matrix.m32; batch.matrices [pos].m33 = voxels [i].matrix.m33;
+
 					batch.color [pos].x = voxels [i].color.r / 255f;
 					batch.color [pos].y = voxels [i].color.g / 255f;
 					batch.color [pos].z = voxels [i].color.b / 255f;
 					batch.color [pos].w = 1f;
 					batch.light [pos] = voxels [i].light;
+					batch.UpdateBounds (voxels[i].position, voxels[i].meshSize);
 				}
 			}
 
@@ -111,13 +118,13 @@ namespace VoxelPlay.GPUInstancing {
 				BatchedMesh batchedMesh = batchedMeshes.values [k];
 				for (int j = 0; j < batchedMesh.batches.count; j++) {
 					Batch batch = batchedMesh.batches.values [j];
-					batch.materialPropertyBlock.SetVectorArray ("_Color", batch.color);
+					batch.materialPropertyBlock.SetVectorArray ("_TintColor", batch.color);
 					batch.materialPropertyBlock.SetFloatArray ("_VoxelLight", batch.light);
 				}
 			}
 		}
 
-		public void Render (Vector3 observerPos, float visibleDistance) {
+		public void Render (Vector3 observerPos, float visibleDistance, Vector3[] frustumPlanesNormals, float[] frustumPlanesDistances ) {
 			if (rebuild) {
 				if (!Application.isPlaying || Time.frameCount - lastRebuildFrame > 10) {
 					lastRebuildFrame = Time.frameCount;
@@ -133,9 +140,15 @@ namespace VoxelPlay.GPUInstancing {
 				ShadowCastingMode shadowCastingMode = vd.castShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
 				for (int j = 0; j < batchedMesh.batches.count; j++) {
 					Batch batch = batchedMesh.batches.values [j];
-					Graphics.DrawMeshInstanced (mesh, 0, material, batch.matrices, batch.instancesCount, batch.materialPropertyBlock, shadowCastingMode, vd.receiveShadows, env.layerVoxels);
+					if (GeometryUtilityNonAlloc.TestPlanesAABB (frustumPlanesNormals, frustumPlanesDistances, ref batch.boundsMin, ref batch.boundsMax)) {
+						Graphics.DrawMeshInstanced (mesh, 0, material, batch.matrices, batch.instancesCount, batch.materialPropertyBlock, shadowCastingMode, vd.receiveShadows, env.layerVoxels);
+					}
 				}
 			}
+			#if UNITY_EDITOR
+			// required to fix a bug by which Draw Calls skyrocket in Stats windows when some voxel uses GPU instancing when "Render In SceneView" is enabled and the scene has just loaded in Editor
+			UnityEditor.EditorUtility.SetDirty(env.gameObject);
+			#endif
 		}
 
 

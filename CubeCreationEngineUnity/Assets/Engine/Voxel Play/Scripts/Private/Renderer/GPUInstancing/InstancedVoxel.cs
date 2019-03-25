@@ -11,9 +11,9 @@ namespace VoxelPlay.GPUInstancing {
 
 	struct InstancedVoxel {
 		public VoxelDefinition voxelDefinition;
+		public Vector3 meshSize;
 		public Vector3 position;
-		public Quaternion rotation;
-		public Vector3 scale;
+		public Matrix4x4 matrix;
 		public Color32 color;
 		public float light;
 	}

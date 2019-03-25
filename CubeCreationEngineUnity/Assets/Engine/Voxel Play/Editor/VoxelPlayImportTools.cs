@@ -22,7 +22,7 @@ namespace VoxelPlay {
 		Vector3 scale = Misc.vector3one;
 		ColorToVoxelMap mapping;
 
-		[MenuItem ("Assets/Create/Voxel Play/Import Tools...", false, 1000)]
+		[MenuItem ("Assets/Create/Voxel Play/Import Tools...", false, 151)]
 		public static void ShowWindow () {
 			VoxelPlayImportTools window = GetWindow<VoxelPlayImportTools> ("Import Tools", true);
 			window.minSize = new Vector2 (400, 140);

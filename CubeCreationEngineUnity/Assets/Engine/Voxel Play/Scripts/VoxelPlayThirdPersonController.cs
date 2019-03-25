@@ -10,6 +10,8 @@ namespace VoxelPlay {
 
 	public partial class VoxelPlayThirdPersonController : VoxelPlayCharacterControllerBase {
 
+		public bool useThirdPartyController = false;
+
 		[Header ("Camera")]
 		public Camera m_Camera;
 		public float cameraOrbitSpeed = 0.1f;
@@ -24,6 +26,7 @@ namespace VoxelPlay {
 
 
 		[Header ("Movement")]
+		[Tooltip ("Disable camera & movement options to allow other third person controllers")]
 		public bool alwaysRun = true;
 		[SerializeField] float m_MovingTurnSpeed = 360;
 		[SerializeField] float m_StationaryTurnSpeed = 180;
@@ -37,7 +40,18 @@ namespace VoxelPlay {
 		[SerializeField] float m_GroundCheckDistance = 0.1f;
 
 		public string attackAnimationState;
+		[SerializeField, HideInInspector]
+		float _characterHeight = 1.8f;
 
+		public float characterHeight {
+			get {
+				if (useThirdPartyController) {
+					return _characterHeight;
+				} else {
+					return m_CapsuleHeight;
+				}
+			}
+		}
 
 
 		bool m_Jump;
@@ -63,6 +77,8 @@ namespace VoxelPlay {
 		Vector3 curPos;
 		float cameraX, cameraY;
 		Vector3 lastVoxelHighlightPos;
+		bool seeking;
+		Vector3 seekTarget;
 
 		static VoxelPlayThirdPersonController _thirdPersonController;
 
@@ -90,12 +106,16 @@ namespace VoxelPlay {
 		void Start () {
 			base.Init ();
 
-			m_Rigidbody = GetComponent<Rigidbody> ();
 			m_Capsule = GetComponent<CapsuleCollider> ();
-			m_CapsuleHeight = m_Capsule.height * transform.lossyScale.y;
-			m_CapsuleCenter = m_Capsule.center;
+			if (m_Capsule != null) {
+				m_CapsuleHeight = m_Capsule.height * transform.lossyScale.y;
+				m_CapsuleCenter = m_Capsule.center;
+			}
 
-			m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+			m_Rigidbody = GetComponent<Rigidbody> ();
+			if (m_Rigidbody != null) {
+				m_Rigidbody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationY | RigidbodyConstraints.FreezeRotationZ;
+			}
 			m_OrigGroundCheckDistance = m_GroundCheckDistance;
 			m_Animator = GetComponentInChildren<Animator> ();
 
@@ -118,7 +138,7 @@ namespace VoxelPlay {
 
 			// Position character on ground
 			if (!env.saveFileIsLoaded) {
-				if (startOnFlat && env.world!=null) {
+				if (startOnFlat && env.world != null) {
 					float minAltitude = env.world.terrainGenerator.maxHeight;
 					Vector3 flatPos = transform.position;
 					Vector3 randomPos;
@@ -127,7 +147,7 @@ namespace VoxelPlay {
 						float alt = env.GetTerrainHeight (randomPos);
 						if (alt < minAltitude && alt >= env.waterLevel + 1) {
 							minAltitude = alt;
-							randomPos.y = alt + m_CapsuleHeight * 0.5f + 0.1f;
+							randomPos.y = alt + characterHeight * 0.5f + 0.1f;
 							flatPos = randomPos;
 						}
 					}
@@ -139,7 +159,7 @@ namespace VoxelPlay {
 
 			cameraX = 0;
 			cameraY = 35;
-			UpdateCamera ();
+			UpdateCamera (false);
 
 			InitCrosshair ();
 
@@ -164,7 +184,9 @@ namespace VoxelPlay {
 		/// </summary>
 		/// <param name="state">If set to <c>true</c> state.</param>
 		public void ToggleCharacterController (bool state) {
-			m_Rigidbody.isKinematic = !state;
+			if (m_Rigidbody != null) {
+				m_Rigidbody.isKinematic = !state;
+			}
 			enabled = state;
 		}
 
@@ -177,7 +199,7 @@ namespace VoxelPlay {
 			VoxelChunk chunk = env.GetCurrentChunk ();
 			for (int k = 0; k < 20; k++) {
 				if (chunk.isRendered) {
-					if (Physics.Raycast (transform.position, Misc.vector3down, m_CapsuleHeight)) {
+					if (Physics.Raycast (transform.position, Misc.vector3down, characterHeight)) {
 						break;
 					}
 				}
@@ -185,30 +207,76 @@ namespace VoxelPlay {
 			}
 			Unstuck ();
 			ToggleCharacterController (true);
-
-			Cursor.lockState = CursorLockMode.Locked;
-
 		}
 
 
 
 		private void Update () {
+
+			curPos = transform.position;
+			CheckWaterStatus ();
+
+			if (useThirdPartyController) {
+				UpdateSimple ();
+			} else {
+				UpdateWithCharacterController ();
+			}
+		}
+
+		void UpdateSimple () {
+			if (input == null || !input.focused || !input.enabled)
+				return;
+			
+			bool leftAltPressed = input.GetButton (InputButtonNames.LeftAlt);
+			bool leftShiftPressed = input.GetButton (InputButtonNames.LeftShift);
+			bool leftControlPressed = input.GetButton (InputButtonNames.LeftControl);
+			bool fire1Pressed = input.GetButton (InputButtonNames.Button1);
+
+			if (fire1Pressed) {
+				if (ModelPreviewCancel ()) {
+					fire1Pressed = false;
+					lastHitButtonPressed = Time.time + 0.5f;
+				}
+			}
+
+			bool fire2Clicked = input.GetButtonDown (InputButtonNames.Button2);
+			if (!leftShiftPressed && !leftAltPressed && !leftControlPressed) {
+				if (Time.time - lastHitButtonPressed > player.hitDelay) {
+					if (fire1Pressed) {
+						DoHit (player.hitDamage);
+					}
+				}
+
+				if (fire2Clicked) {
+					DoBuild (curPos, transform.forward, crosshairHitInfo.voxelCenter);
+				}
+			}
+
+			if (input.GetButtonDown (InputButtonNames.Build)) {
+				env.SetBuildMode (!env.buildMode);
+				if (env.buildMode) {
+					#if UNITY_EDITOR
+					env.ShowMessage ("<color=green>Entered <color=yellow>Build Mode</color>. Press <color=white>B</color> to cancel, <color=white>V</color> to enter the Constructor.</color>");
+					#else
+						env.ShowMessage ("<color=green>Entered <color=yellow>Build Mode</color>. Press <color=white>B</color> to cancel.</color>");
+					#endif
+				} else {
+					env.ShowMessage ("<color=green>Back to <color=yellow>Normal Mode</color>.</color>");
+				}
+			}
+
+		}
+
+
+		void UpdateWithCharacterController () {
+
 			m_CapsuleRadius = m_Capsule.radius * transform.lossyScale.x;
 
 			if (!m_Jump) {
 				m_Jump = input.GetButtonDown (InputButtonNames.Jump);
 			}
-			if (input.GetButton (InputButtonNames.Button1) && attackAnimationState != null) {
-				m_Animator.Play (attackAnimationState);
-			} 
-
-			curPos = transform.position;
-
-			CheckWaterStatus ();
 
 			CheckFootfalls ();
-
-			VoxelHighlight ();
 
 			// Process click events
 			if (input.focused && input.enabled) {
@@ -216,7 +284,7 @@ namespace VoxelPlay {
 				bool leftShiftPressed = input.GetButton (InputButtonNames.LeftShift);
 				bool leftControlPressed = input.GetButton (InputButtonNames.LeftControl);
 				bool fire1Pressed = input.GetButton (InputButtonNames.Button1);
-				bool fire2Clicked = input.GetButtonDown (InputButtonNames.Button2);
+				bool fire2Clicked = input.GetButtonClick (InputButtonNames.Button2);
 				if (!leftShiftPressed && !leftAltPressed && !leftControlPressed) {
 					if (Time.time - lastHitButtonPressed > player.hitDelay) {
 						if (fire1Pressed) {
@@ -224,7 +292,7 @@ namespace VoxelPlay {
 						}
 					}
 					if (fire2Clicked) {
-						DoHit (0);
+						DoBuild (curPos, transform.forward, crosshairHitInfo.voxelCenter);
 					}
 				}
 
@@ -239,10 +307,6 @@ namespace VoxelPlay {
 					} else {
 						env.ShowMessage ("<color=green>Back to <color=yellow>Normal Mode</color>.</color>");
 					}
-				}
-
-				if (fire2Clicked && !leftAltPressed && !leftShiftPressed) {
-					DoBuild ();
 				}
 
 				// Toggles Flight mode
@@ -260,30 +324,47 @@ namespace VoxelPlay {
 				} else if (input.GetButtonDown (InputButtonNames.Light)) {
 					ToggleCharacterLight ();
 				} else if (input.GetButtonDown (InputButtonNames.ThrowItem)) {
-					ThrowCurrentItem ();
+					Vector3 direction = transform.forward;
+					direction.y = 1f;
+					ThrowCurrentItem (transform.position, direction);
 				}
 			}
 
-			UpdateCamera ();
+			UpdateCamera (true);
 
 		}
 
 		// Fixed update is called in sync with physics
 		private void FixedUpdate () {
 
-			if (!input.enabled)
+			if (useThirdPartyController || input == null || !input.enabled)
 				return;
 			
 			// read inputs
 			float h = input.horizontalAxis;
 			float v = input.verticalAxis;
-
-			// calculate move direction to pass to character
-			// calculate camera relative direction to move:
-			m_CamForward = Vector3.Scale (m_Camera.transform.forward, new Vector3 (1, 0, 1)).normalized;
-			m_Move = v * m_CamForward + h * m_Camera.transform.right;
-
 			isPressingMoveKeys = h != 0 || v != 0;
+
+			// if seeking target, change move
+			if (isPressingMoveKeys) {
+				seeking = false;
+			}
+
+			if (seeking) {
+				// Check orientation
+				m_Move = seekTarget - transform.position;
+				m_Move.y = 0;
+				if (m_Move.sqrMagnitude <= 1.5f) {
+					StartCoroutine (CompleteHit (player.hitDamage));
+				}
+				m_Move.Normalize ();
+			} else {
+				// calculate move direction to pass to character
+				// calculate camera relative direction to move:
+				m_CamForward = Vector3.Scale (m_Camera.transform.forward, new Vector3 (1, 0, 1)).normalized;
+				m_Move = v * m_CamForward + h * m_Camera.transform.right;
+			}
+
 			isMoving = m_Move.sqrMagnitude > 0;
 			isRunning = false;
 
@@ -580,7 +661,7 @@ namespace VoxelPlay {
 				return;
 			} 
 
-			if (voxelCh.GetWaterLevel() > 7) { 
+			if (voxelCh.GetWaterLevel () > 7) { 
 				isSwimming = true;
 			}
 
@@ -596,46 +677,55 @@ namespace VoxelPlay {
 		/// Ensures player is above terrain
 		/// </summary>
 		public void Unstuck () {
-			if (env.CheckCollision (env.cameraMain.transform.position) || env.CheckCollision (transform.position)) {
+			if (env.CheckCollision (transform.position)) {
 				float minAltitude = env.GetTerrainHeight (transform.position);
-				transform.position = new Vector3 (transform.position.x, minAltitude + m_CapsuleHeight * 0.5f + 0.1f, transform.position.z);
+				transform.position = new Vector3 (transform.position.x, minAltitude + characterHeight * 0.5f + 0.1f, transform.position.z);
 			}
 		}
 
-		/// <summary>
-		/// Removes an unit fcrom current item in player inventory and throws it into the scene
-		/// </summary>
-		public void ThrowCurrentItem () {
-			InventoryItem inventoryItem = player.ConsumeItem ();
-			if (inventoryItem == InventoryItem.Null)
+		void UpdateCamera (bool smooth) {
+
+			if (useThirdPartyController)
 				return;
 
-			if (inventoryItem.item.category != ItemCategory.Voxel)
-				return;
+			float oldCameraY = cameraY;
 
-			env.VoxelThrow (m_Camera.transform.position, m_Camera.transform.forward, 15f, inventoryItem.item.voxelType, Misc.color32White);
-		}
-
-		void UpdateCamera () {
 			if (input != null) {
-				cameraX += input.mouseX * cameraXSpeed * cameraDistance;
-				cameraY -= input.mouseY * cameraYSpeed * cameraDistance;
-				cameraY = ClampAngle (cameraY, cameraYMinLimit, cameraYMaxLimit);
-				cameraDistance = Mathf.Clamp (cameraDistance + input.mouseScrollWheel * 5, cameraMinDistance, cameraMaxDistance);
+				if (input.GetButton (InputButtonNames.Button2)) {
+					cameraX += input.mouseX * cameraXSpeed * cameraDistance;
+					cameraY -= input.mouseY * cameraYSpeed * cameraDistance;
+					cameraY = ClampAngle (cameraY, cameraYMinLimit, cameraYMaxLimit);
+					smooth = false;
+				}
+				cameraDistance += input.mouseScrollWheel * 5f;
 			}
 
 			Quaternion rotation = Quaternion.Euler (cameraY, cameraX, 0);
 	
-			RaycastHit hit;
 			Vector3 targetPos = transform.position + Misc.vector3up * (m_CapsuleHeight * 0.5f);
-			if (Physics.Linecast (targetPos, m_Camera.transform.position, out hit)) {
-				cameraDistance -= hit.distance;
+			VoxelHitInfo hitInfo;
+			float distance = Vector3.Distance (targetPos, m_Camera.transform.position);
+			Vector3 direction = (targetPos - m_Camera.transform.position) / distance;
+			if (env.RayCast (m_Camera.transform.position, direction, out hitInfo, distance, 3, ColliderTypes.IgnorePlayer)) {
+				cameraDistance -= hitInfo.distance + 0.1f;
 			}
+			cameraDistance = Mathf.Clamp (cameraDistance, cameraMinDistance, cameraMaxDistance);
+
 			Vector3 negDistance = new Vector3 (0.0f, 0.0f, -cameraDistance);
 			Vector3 position = rotation * negDistance + targetPos;
 
+			// check there's no voxel under camera to avoid clipping with ground
+			Vector3 pos = position;
+			pos.y -= 0.25f;
+			if (env.IsWallAtPosition(pos)) {
+				cameraY = oldCameraY;
+				rotation = Quaternion.Euler (cameraY, cameraX, 0);
+				position = rotation * negDistance + targetPos;
+			}
+
+			// move camera
 			m_Camera.transform.rotation = rotation;
-			m_Camera.transform.position = position;
+			m_Camera.transform.position = smooth ? Vector3.Lerp(m_Camera.transform.position, position, 0.1f) : position;
 		}
 
 		public static float ClampAngle (float angle, float min, float max) {
@@ -647,18 +737,45 @@ namespace VoxelPlay {
 		}
 
 		void DoHit (int damage) {
+
+			if (crosshairHitInfo.voxelIndex < 0) {
+				return;
+			}
+		
 			lastHitButtonPressed = Time.time;
+			seekTarget = crosshairHitInfo.voxelCenter;
+			Vector3 dist = seekTarget - transform.position;
+			dist.y = 0;
+			seeking = dist.sqrMagnitude > 1.5f;
+			if (!seeking) {
+				StartCoroutine (CompleteHit (damage));
+			}
+		}
+
+		IEnumerator CompleteHit (int damage) {
+			seeking = false;
+
+			if (attackAnimationState != null) {
+				m_Animator.Play (attackAnimationState);
+				yield return new WaitForSeconds (0.3f);
+			} 
 
 			Vector3 rayOrigin = GetRayOrigin ();
-			Ray ray = new Ray (rayOrigin, transform.forward);
+			Vector3 dir = (seekTarget - rayOrigin).normalized;
+			Ray ray = new Ray (rayOrigin, dir);
 			env.RayHit (ray, damage, player.hitRange, player.hitDamageRadius);
 		}
 
-		Vector3 GetRayOrigin() {
-			return transform.position + new Vector3 (0, 0.5f, 0) + transform.forward;
+		Vector3 GetRayOrigin () {
+			return transform.position + new Vector3 (0, characterHeight * 0.5f, 0) + transform.forward;
 		}
-		void DoBuild () {
-			// Pending...
+
+
+		/// <summary>
+		/// Moves character controller to a new position. Use this method instead of changing the transform position
+		/// </summary>
+		public override void MoveTo (Vector3 newPosition) {
+			transform.position = newPosition;
 		}
 
 	}

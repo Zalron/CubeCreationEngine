@@ -6,7 +6,7 @@ using Random = UnityEngine.Random;
 
 namespace VoxelPlay {
 
-	public partial class VoxelPlayCharacterControllerBase : MonoBehaviour {
+	public abstract partial class VoxelPlayCharacterControllerBase : MonoBehaviour {
 
 
 		[Header ("Start Position")]
@@ -55,7 +55,7 @@ namespace VoxelPlay {
 		public AudioClip[] swimStrokeSounds;
 		public float swimStrokeInterval = 8;
 
-		[Header("Walking")]
+		[Header ("Walking")]
 		// an array of footstep sounds that will be randomly selected from.
 		public AudioClip[] footstepSounds;
 
@@ -68,10 +68,10 @@ namespace VoxelPlay {
 		// the sound played when character touches back on ground.
 		public AudioClip landSound;
 
-		[Header("Other Sounds")]
+		[Header ("Other Sounds")]
 		public AudioClip cancelSound;
 
-		[Header("World Limits")]
+		[Header ("World Limits")]
 		public bool limitBoundsEnabled;
 		public Bounds limitBounds;
 
@@ -94,12 +94,16 @@ namespace VoxelPlay {
 		float lastDiveTime;
 		float m_StepCycle;
 		float m_NextStep;
+		bool modelBuildPreview;
+		bool modelBuildInProgress;
+		Vector3 modelBuildPreviewPosition;
+		int modelBuildRotation;
+		GameObject modelBuildPreviewGO;
 
 		[NonSerialized]
 		public VoxelHitInfo crosshairHitInfo;
 		[NonSerialized]
-		public	bool crosshairOnBlock;
-
+		public bool crosshairOnBlock;
 
 		protected VoxelPlayPlayer _player;
 
@@ -120,19 +124,15 @@ namespace VoxelPlay {
 
 
 
-		protected void Init() {
+		protected void Init () {
 			m_AudioSource = GetComponent<AudioSource> ();
-			if (m_AudioSource == null) {
-				m_AudioSource = gameObject.AddComponent<AudioSource> ();
-			}
 			m_StepCycle = 0f;
 			m_NextStep = m_StepCycle / 2f;
 
-
 			// Check player can collide with voxels
 			#if UNITY_EDITOR
-			if (env!=null && Physics.GetIgnoreLayerCollision (gameObject.layer, env.layerVoxels)) {
-				Debug.LogError ("Player can't collide with voxels. Please check physics collision matrix in Project settings or change Voxels Layer in VoxelPlayEnvironment component.");
+			if (env != null && Physics.GetIgnoreLayerCollision (gameObject.layer, env.layerVoxels)) {
+				Debug.LogError ("Player currently can't collide with voxels. Please check physics collision matrix in Project settings or change Voxels Layer in VoxelPlayEnvironment component.");
 			}
 			#endif
 		}
@@ -165,7 +165,7 @@ namespace VoxelPlay {
 
 
 		protected void CheckFootfalls () {
-			if (isGrounded && !isInWater) {
+			if (!isGrounded && !isInWater) {
 				Vector3 curPos = transform.position;
 				int x = (int)curPos.x;
 				int y = (int)curPos.y;
@@ -180,8 +180,8 @@ namespace VoxelPlay {
 						if (lastVoxelTypeIndex != 0) {
 							VoxelDefinition vd = index.type;
 							SetFootstepSounds (vd.footfalls, vd.landingSound, vd.jumpSound);
-							if (vd.triggerWalkEvent && OnVoxelWalk!=null) {
-								OnVoxelWalk(index.chunk, index.voxelIndex);
+							if (vd.triggerWalkEvent && OnVoxelWalk != null) {
+								OnVoxelWalk (index.chunk, index.voxelIndex);
 							}
 							CheckDamage (vd);
 						}
@@ -200,8 +200,8 @@ namespace VoxelPlay {
 			}
 		}
 
-		protected void CheckEnterTrigger(VoxelChunk chunk, int voxelIndex) {
-			if (env.voxelDefinitions [chunk.voxels [voxelIndex].typeIndex].triggerEnterEvent && OnVoxelEnter != null) {
+		protected void CheckEnterTrigger (VoxelChunk chunk, int voxelIndex) {
+			if (chunk != null && env.voxelDefinitions [chunk.voxels [voxelIndex].typeIndex].triggerEnterEvent && OnVoxelEnter != null) {
 				OnVoxelEnter (chunk, voxelIndex);
 			}
 		}
@@ -213,7 +213,7 @@ namespace VoxelPlay {
 		}
 
 		public void PlayLandingSound () {
-			if (isInWater)
+			if (isInWater || m_AudioSource == null)
 				return;
 			m_AudioSource.clip = landSound;
 			m_AudioSource.Play ();
@@ -223,7 +223,7 @@ namespace VoxelPlay {
 
 
 		public void PlayJumpSound () {
-			if (isInWater || isFlying)
+			if (isInWater || isFlying || m_AudioSource == null)
 				return;
 			m_AudioSource.clip = jumpSound;
 			m_AudioSource.Play ();
@@ -231,6 +231,8 @@ namespace VoxelPlay {
 
 
 		public void PlayCancelSound () {
+			if (m_AudioSource == null)
+				return;
 			m_AudioSource.clip = cancelSound;
 			m_AudioSource.Play ();
 		}
@@ -241,10 +243,19 @@ namespace VoxelPlay {
 				return;
 			lastDiveTime = Time.time;
 			m_NextStep = m_StepCycle + swimStrokeInterval;
-			if (waterSplash != null) {
+			if (waterSplash != null && m_AudioSource != null) {
 				m_AudioSource.clip = waterSplash;
 				m_AudioSource.Play ();
-//				AudioSource.PlayClipAtPoint(waterSplash, soundPosition);
+			}
+		}
+
+		/// <summary>
+		/// Plays a sound at character position
+		/// </summary>
+		public void PlayCustomSound (AudioClip sound) {
+			if (sound != null && m_AudioSource != null) {
+				m_AudioSource.clip = sound;
+				m_AudioSource.Play ();
 			}
 		}
 
@@ -266,7 +277,7 @@ namespace VoxelPlay {
 
 
 		private void PlayFootStepAudio () {
-			if (!isGrounded) {
+			if (!isGrounded || m_AudioSource == null) {
 				return;
 			}
 			if (footstepSounds == null || footstepSounds.Length == 0)
@@ -305,7 +316,7 @@ namespace VoxelPlay {
 
 
 		private void PlaySwimStrokeAudio () {
-			if (swimStrokeSounds == null || swimStrokeSounds.Length == 0)
+			if (swimStrokeSounds == null || swimStrokeSounds.Length == 0 || m_AudioSource == null)
 				return;
 			// pick & play a random swim stroke sound from the array,
 			// excluding sound at index 0
@@ -321,6 +332,189 @@ namespace VoxelPlay {
 			swimStrokeSounds [n] = swimStrokeSounds [0];
 			swimStrokeSounds [0] = m_AudioSource.clip;
 		}
+
+
+		/// <summary>
+		/// Moves character controller to a new position. Use this method instead of changing the transform position
+		/// </summary>
+		public abstract void MoveTo (Vector3 newPosition);
+
+
+		/// <summary>
+		/// Implements building stuff
+		/// </summary>
+		/// <param name="camPos">The camera position OR the character position in a 3rd person controller</param>">
+		protected void DoBuild (Vector3 camPos, Vector3 forward, Vector3 hintedPlacePos) {
+			if (player.selectedItemIndex < 0 || player.selectedItemIndex >= player.items.Count)
+				return;
+
+			InventoryItem inventoryItem = player.GetSelectedItem ();
+			ItemDefinition currentItem = inventoryItem.item;
+			switch (currentItem.category) {
+			case ItemCategory.Voxel:
+
+				// Basic placement rules
+				bool canPlace = crosshairOnBlock;
+				Voxel existingVoxel = crosshairHitInfo.voxel;
+				VoxelDefinition existingVoxelType = existingVoxel.type;
+				Vector3 placePos;
+				if (currentItem.voxelType.renderType == RenderType.Water && !canPlace) {
+					canPlace = true; // water can be poured anywhere
+					placePos = camPos + forward * 3f;
+				} else {
+					placePos = crosshairHitInfo.voxelCenter + crosshairHitInfo.normal;
+					if (canPlace && crosshairHitInfo.normal.y == 1) {
+						// Make sure there's a valid voxel under position (ie. do not build a voxel on top of grass)
+						canPlace = (existingVoxelType != null && existingVoxelType.renderType != RenderType.CutoutCross && (existingVoxelType.renderType != RenderType.Water || currentItem.voxelType.renderType == RenderType.Water));
+					}
+				}
+				VoxelDefinition placeVoxelType = currentItem.voxelType;
+
+				// Check voxel promotion
+				bool isPromoting = false;
+				if (canPlace) {
+					if (existingVoxelType == currentItem.voxelType) {
+						if (existingVoxelType.promotesTo != null) {
+							// Promote existing voxel
+							env.VoxelDestroy (crosshairHitInfo.voxelCenter);
+							placePos = crosshairHitInfo.voxelCenter;
+							placeVoxelType = existingVoxelType.promotesTo;
+							isPromoting = true;
+						} else if (crosshairHitInfo.normal.y > 0 && existingVoxelType.biomeDirtCounterpart != null) {
+							env.VoxelPlace (crosshairHitInfo.voxelCenter, existingVoxelType.biomeDirtCounterpart);
+						}
+					}
+				}
+
+				// Compute rotation
+				int textureRotation = 0;
+				if (placeVoxelType.placeFacingPlayer && placeVoxelType.renderType.supportsTextureRotation ()) {
+					// Orient voxel to player
+					if (Mathf.Abs (forward.x) > Mathf.Abs (forward.z)) {
+						if (forward.x > 0) {
+							textureRotation = 1;
+						} else {
+							textureRotation = 3;
+						}
+					} else if (forward.z < 0) {
+						textureRotation = 2;
+					}
+				}
+
+				// Final check, does it overlap existing geometry?
+				if (canPlace && !isPromoting) {
+					Quaternion rotationQ = Quaternion.Euler (0, Voxel.GetTextureRotationDegrees (textureRotation), 0);
+					canPlace = !env.VoxelOverlaps (placePos, placeVoxelType, rotationQ, 1 << env.layerVoxels);
+					if (!canPlace) {
+						PlayCancelSound ();
+					}
+				}
+				#if UNITY_EDITOR
+				else if (env.constructorMode) {
+					placePos = hintedPlacePos;
+					placeVoxelType = currentItem.voxelType;
+					canPlace = true;
+				}
+				#endif
+				// Finally place the voxel
+				if (canPlace) {
+					// Consume item first
+					if (!env.buildMode) {
+						player.ConsumeItem ();
+					}
+					// Place it
+					float amount = inventoryItem.quantity < 1f ? inventoryItem.quantity : 1f;
+					env.VoxelPlace (placePos, placeVoxelType, true, placeVoxelType.tintColor, amount, textureRotation);
+
+					// Moves back character controller if voxel is put just on its position
+					const float minDist = 0.5f;
+					float distSqr = Vector3.SqrMagnitude (camPos - placePos);
+					if (distSqr < minDist * minDist) {
+						MoveTo (transform.position + crosshairHitInfo.normal);
+					}
+
+				}
+				break;
+			case ItemCategory.Torch:
+				if (crosshairOnBlock) {
+					GameObject torchAttached = env.TorchAttach (crosshairHitInfo);
+					if (!env.buildMode && torchAttached != null) {
+						player.ConsumeItem ();
+					}
+				}
+				break;
+			case ItemCategory.Model:
+				if (!modelBuildInProgress) {
+					if (modelBuildPreview) {
+						ModelPreviewCancel ();
+						// check if building position is in frustum, otherwise cancel building
+						Vector3 viewportPos = env.cameraMain.WorldToViewportPoint (modelBuildPreviewPosition);
+						if (viewportPos.x < 0 || viewportPos.x > 1f || viewportPos.y < 0 || viewportPos.y > 1f || viewportPos.z < 0) {
+							return;
+						}
+						modelBuildInProgress = true;
+						env.ModelPlace (modelBuildPreviewPosition, currentItem.model, currentItem.model.buildDuration, modelBuildRotation, 1f, true, FinishBuilding);
+						player.ConsumeItem ();
+					} else {
+						if (crosshairOnBlock) {
+							modelBuildPreviewPosition = crosshairHitInfo.voxelCenter + new Vector3 (0f, 1f, 0f);
+							// Orient voxel to player
+							modelBuildRotation = 0;
+							if (Mathf.Abs (forward.x) > Mathf.Abs (forward.z)) {
+								if (forward.x > 0) {
+									modelBuildRotation = 1;
+								} else {
+									modelBuildRotation = 3;
+								}
+							} else if (forward.z < 0) {
+								modelBuildRotation = 2;
+							}
+							modelBuildRotation = (int)Voxel.GetTextureRotationDegrees (modelBuildRotation);
+							modelBuildPreviewGO = env.ModelHighlight (currentItem.model, crosshairHitInfo.voxelCenter + new Vector3 (0.5f, -0.5f, 0.5f));
+							modelBuildPreviewGO.transform.localRotation = Quaternion.Euler (0, modelBuildRotation, 0);
+							modelBuildPreview = true;
+						}
+					}
+				}
+				break;
+			case ItemCategory.General:
+				ThrowCurrentItem (camPos, forward);
+				break;
+			}
+		}
+
+		/// <summary>
+		/// Removes an unit fcrom current item in player inventory and throws it into the scene
+		/// </summary>
+		public void ThrowCurrentItem (Vector3 playerPos, Vector3 direction) {
+			InventoryItem inventoryItem = player.ConsumeItem ();
+			if (inventoryItem == InventoryItem.Null)
+				return;
+
+			if (inventoryItem.item.category == ItemCategory.Voxel) {
+				env.VoxelThrow (playerPos, direction, 15f, inventoryItem.item.voxelType, Misc.color32White);
+			} else if (inventoryItem.item.category == ItemCategory.General) {
+				env.ItemThrow (playerPos, direction, 15f, inventoryItem.item);
+			}
+		}
+
+
+		void FinishBuilding (ModelDefinition modelDefinition, Vector3 position) {
+			modelBuildInProgress = false;
+		}
+
+		public bool ModelPreviewCancel () {
+			if (modelBuildPreview) {
+				modelBuildPreview = false;
+				if (modelBuildPreviewGO != null) {
+					modelBuildPreviewGO.SetActive (false);
+				}
+				return true;
+			} else {
+				return false;
+			}
+		}
+
 
 
 	}

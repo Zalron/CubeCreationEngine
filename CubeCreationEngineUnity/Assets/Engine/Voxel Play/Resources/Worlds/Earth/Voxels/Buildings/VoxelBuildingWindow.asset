@@ -13,6 +13,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   title: 
   renderType: 7
+  opaque: 0
   textureTop: {fileID: 2800000, guid: b2dc43145f27b4e3c94e4c35a6376984, type: 3}
   textureTopEmission: {fileID: 0}
   textureTopNRM: {fileID: 0}
@@ -52,6 +53,7 @@ MonoBehaviour:
   hidden: 0
   canBeCollected: 1
   dropItem: {fileID: 0}
+  icon: {fileID: 0}
   navigatable: 1
   windAnimation: 1
   model: {fileID: 0}
@@ -60,8 +62,11 @@ MonoBehaviour:
   receiveShadows: 1
   createGameObject: 0
   offset: {x: 0, y: 0, z: 0}
+  offsetRandom: 0
+  offsetRandomRange: {x: 0, y: 0, z: 0}
   scale: {x: 1, y: 1, z: 1}
   rotation: {x: 0, y: 0, z: 0}
+  rotationRandomY: 0
   promotesTo: {fileID: 0}
   spreads: 0
   drains: 1
@@ -78,3 +83,4 @@ MonoBehaviour:
   placeFacingPlayer: 1
   triggerEnterEvent: 0
   triggerWalkEvent: 0
+  showFoam: 1

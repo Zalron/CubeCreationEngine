@@ -33,7 +33,7 @@
 			#pragma multi_compile _ VOXELPLAY_USE_AA
 			#pragma multi_compile _ VOXELPLAY_PIXEL_LIGHTS
 			#define DOUBLE_SIDED_GLASS
-			#define SHINING
+			#pragma multi_compile _ VOXELPLAY_TRANSP_BLING
 			#include "VPVoxelGeoTransp.cginc"
 			ENDCG
 		}

@@ -19,9 +19,11 @@ void vert (inout appdata v) {
 }
 
 
+float3 worldCenter;
 inline void PushCorner(inout TriangleStream<g2f>o, float3 center, float3 corner, float3 uv) {
 	vertexInfo v;
 	v.vertex = float4(center + corner, 1.0);
+	VOXELPLAY_MODIFY_VERTEX(v.vertex, worldCenter + corner)
 	g2f i;
 	i.uv     = uv;
 	TRANSFER_SHADOW_CASTER(i);
@@ -42,7 +44,7 @@ void PushVoxel(float3 center, float3 uv, inout TriangleStream<g2f> o) {
 	float3 v7          = -v1;
 
 	// wind effect
-	float3 worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
+	worldCenter = mul(unity_ObjectToWorld, float4(center, 1.0)).xyz;
 	float disp = sin(worldCenter.x + _Time.w) * 0.01;
 	v7.x += disp;
 	v6.x += disp;

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   title: 
   renderType: 0
+  opaque: 0
   textureTop: {fileID: 2800000, guid: 028ef74bd331c49b08ad6615401ecc9a, type: 3}
   textureTopEmission: {fileID: 0}
   textureTopNRM: {fileID: 0}
@@ -62,8 +63,11 @@ MonoBehaviour:
   receiveShadows: 1
   createGameObject: 0
   offset: {x: 0, y: 0, z: 0}
+  offsetRandom: 0
+  offsetRandomRange: {x: 0, y: 0, z: 0}
   scale: {x: 1, y: 1, z: 1}
   rotation: {x: 0, y: 0, z: 0}
+  rotationRandomY: 0
   promotesTo: {fileID: 0}
   spreads: 0
   drains: 1

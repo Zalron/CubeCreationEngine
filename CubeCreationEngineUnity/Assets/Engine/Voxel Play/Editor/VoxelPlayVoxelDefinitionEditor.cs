@@ -6,18 +6,18 @@ using System.Collections;
 namespace VoxelPlay {
 				
 	[CustomEditor (typeof(VoxelDefinition))]
-	public class VoxelPlayVoxelDefinition : Editor {
+	public class VoxelPlayVoxelDefinitionEditor : Editor {
 
-		SerializedProperty title, renderType;
+		SerializedProperty title, renderType, opaque;
 		SerializedProperty textureTop, textureTopEmission, textureTopNRM, textureTopDISP;
 		SerializedProperty textureSide, textureSideEmission, textureSideNRM, textureSideDISP;
 		SerializedProperty textureRight, textureRightEmission, textureRightNRM, textureRightDISP;
 		SerializedProperty textureForward, textureForwardEmission, textureForwardNRM, textureForwardDISP;
 		SerializedProperty textureLeft, textureLeftEmission, textureLeftNRM, textureLeftDISP;
 		SerializedProperty textureBottom, textureBottomEmission, textureBottomNRM, textureBottomDISP;
-		SerializedProperty tintColor, colorVariation;
+		SerializedProperty showFoam, tintColor, colorVariation;
 		SerializedProperty pickupSound, buildSound, footfalls, jumpSound, landingSound, impactSound, destructionSound;
-		SerializedProperty resistancePoints, canBeCollected, hidden, dropItem, triggerCollapse, willCollapse, navigatable, windAnimation;
+		SerializedProperty resistancePoints, canBeCollected, hidden, dropItem, icon, triggerCollapse, willCollapse, navigatable, windAnimation;
 		SerializedProperty model, gpuInstancing, castShadows, receiveShadows, createGameObject;
 		SerializedProperty offset, offsetRandom, offsetRandomRange, scale, rotation, rotationRandomY, promotesTo;
 		SerializedProperty spreads, drains, spreadDelay, spreadDelayRandom, diveColor, height;
@@ -57,6 +57,7 @@ namespace VoxelPlay {
 
 			title = serializedObject.FindProperty ("title");
 			renderType = serializedObject.FindProperty ("renderType");
+			opaque = serializedObject.FindProperty ("opaque");
 			textureTop = serializedObject.FindProperty ("textureTop");
 			textureTopEmission = serializedObject.FindProperty ("textureTopEmission");
 			textureTopNRM = serializedObject.FindProperty ("textureTopNRM");
@@ -81,6 +82,8 @@ namespace VoxelPlay {
 			textureBottomEmission = serializedObject.FindProperty ("textureBottomEmission");
 			textureBottomNRM = serializedObject.FindProperty ("textureBottomNRM");
 			textureBottomDISP = serializedObject.FindProperty ("textureBottomDISP");
+
+			showFoam = serializedObject.FindProperty ("showFoam");
 			tintColor = serializedObject.FindProperty ("tintColor");
 			colorVariation = serializedObject.FindProperty ("colorVariation");
 
@@ -96,6 +99,7 @@ namespace VoxelPlay {
 			canBeCollected = serializedObject.FindProperty ("canBeCollected");
 			hidden = serializedObject.FindProperty ("hidden");
 			dropItem = serializedObject.FindProperty ("dropItem");
+			icon = serializedObject.FindProperty ("icon");
 			navigatable = serializedObject.FindProperty ("navigatable");
 			windAnimation = serializedObject.FindProperty ("windAnimation");
 			model = serializedObject.FindProperty ("model");
@@ -154,12 +158,13 @@ namespace VoxelPlay {
 				EditorGUILayout.PropertyField (offset);
 				EditorGUILayout.PropertyField (offsetRandom);
 				if (offsetRandom.boolValue) {
-					EditorGUILayout.PropertyField (offsetRandomRange, new GUIContent("   Offset Range", "Scale applied to random on each axis."));
+					EditorGUILayout.PropertyField (offsetRandomRange, new GUIContent ("   Offset Range", "Scale applied to random on each axis."));
 				}
 				EditorGUILayout.PropertyField (scale);
 				EditorGUILayout.PropertyField (rotation);
 				EditorGUILayout.PropertyField (rotationRandomY);
-				EditorGUILayout.PropertyField (textureSide, new GUIContent ("Texture Sample", "Texture that represents the model. Used for sampling particle colors and inventory."));
+				TextureField (textureSide, "Texture Sample", "Texture that represents the model. Used for sampling particle colors and inventory.");
+				EditorGUILayout.PropertyField (opaque, new GUIContent ("Opaque", "Set this value to 15 to specify that this is a fully solid object that occludes other adjacent voxels. A lower value let light pass through and reduces it by this amount. 0 = fully transparent."));
 				EditorGUILayout.PropertyField (gpuInstancing, new GUIContent ("GPU Instancing", "Uses GPU instancing to render the model."));
 				if (gpuInstancing.boolValue) {
 					EditorGUILayout.PropertyField (castShadows, new GUIContent ("   Cast Shadows", "If this instanced voxel can cast shadows."));
@@ -171,81 +176,85 @@ namespace VoxelPlay {
 			case (int)RenderType.OpaqueNoAO:
 			case (int)RenderType.Cutout:
 			case (int)RenderType.Water:
-				EditorGUILayout.PropertyField (textureTop);
+				TextureField (textureTop);
 				if (renderType.intValue == (int)RenderType.Opaque) {
-					EditorGUILayout.PropertyField (textureTopEmission, new GUIContent ("   Emission Mask"));
+					TextureField (textureTopEmission, "   Emission Mask");
 				}
-				EditorGUILayout.PropertyField (textureTopNRM, new GUIContent ("   Normal Map"));
-				EditorGUILayout.PropertyField (textureTopDISP, new GUIContent ("   Displacement Map"));
-				EditorGUILayout.PropertyField (textureSide);
+				TextureField (textureTopNRM, "   Normal Map");
+				TextureField (textureTopDISP, "   Displacement Map");
+				TextureField (textureSide);
 				if (textureSide.objectReferenceValue != textureTop.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureSideEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureSideEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureSideNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureSideDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureSideNRM, "   Normal Map");
+					TextureField (textureSideDISP, "   Displacement Map");
 				}
-				EditorGUILayout.PropertyField (textureBottom);
+				TextureField (textureBottom);
 				if (textureBottom.objectReferenceValue != textureTop.objectReferenceValue && textureBottom.objectReferenceValue != textureSide.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureBottomEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureBottomEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureBottomNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureBottomDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureBottomNRM, "   Normal Map");
+					TextureField (textureBottomDISP, "   Displacement Map");
 				}
-				EditorGUI.BeginChangeCheck ();
-				EditorGUILayout.PropertyField (tintColor);
-				if (!EditorGUI.EndChangeCheck ()) {
-					CheckTintColorFeature ();
+				if (renderType.intValue == (int)RenderType.Water) {
+					EditorGUILayout.PropertyField (showFoam);
+				} else {
+					EditorGUI.BeginChangeCheck ();
+					EditorGUILayout.PropertyField (tintColor);
+					if (!EditorGUI.EndChangeCheck ()) {
+						CheckTintColorFeature ();
+					}
 				}
 				break;
 			case (int)RenderType.Opaque6tex:
 			case (int)RenderType.Transp6tex:
-				EditorGUILayout.PropertyField (textureTop);
+				TextureField (textureTop);
 				if (renderType.intValue == (int)RenderType.Opaque) {
-					EditorGUILayout.PropertyField (textureTopEmission, new GUIContent ("   Emission Mask"));
+					TextureField (textureTopEmission, "   Emission Mask");
 				}
-				EditorGUILayout.PropertyField (textureTopNRM, new GUIContent ("   Normal Map"));
-				EditorGUILayout.PropertyField (textureTopDISP, new GUIContent ("   Displacement Map"));
-				EditorGUILayout.PropertyField (textureBottom);
+				TextureField (textureTopNRM, "   Normal Map");
+				TextureField (textureTopDISP, "   Displacement Map");
+				TextureField (textureBottom);
 				if (textureBottom.objectReferenceValue != textureTop.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureBottomEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureBottomEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureBottomNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureBottomDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureBottomNRM, "   Normal Map");
+					TextureField (textureBottomDISP, "   Displacement Map");
 				}
-				EditorGUILayout.PropertyField (textureSide, new GUIContent ("Texture Back"));
+				TextureField (textureSide, "Texture Back");
 				if (textureSide.objectReferenceValue != textureTop.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureSideEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureSideEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureSideNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureSideDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureSideNRM, "   Normal Map");
+					TextureField (textureSideDISP, "   Displacement Map");
 				}
-				EditorGUILayout.PropertyField (textureRight, new GUIContent ("Texture Right"));
+				TextureField (textureRight, "Texture Right");
 				if (textureRight.objectReferenceValue != textureTop.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureRightEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureRightEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureRightNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureRightDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureRightNRM, "   Normal Map");
+					TextureField (textureRightDISP, "   Displacement Map");
 				}
-				EditorGUILayout.PropertyField (textureForward, new GUIContent ("Texture Forward"));
+				TextureField (textureForward, "Texture Forward");
 				if (textureForward.objectReferenceValue != textureTop.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureForwardEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureForwardEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureForwardNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureForwardDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureForwardNRM, "   Normal Map");
+					TextureField (textureForwardDISP, "   Displacement Map");
 				}
-				EditorGUILayout.PropertyField (textureLeft, new GUIContent ("Texture Left"));
+				TextureField (textureLeft, "Texture Left");
 				if (textureLeft.objectReferenceValue != textureTop.objectReferenceValue) {
 					if (renderType.intValue == (int)RenderType.Opaque) {
-						EditorGUILayout.PropertyField (textureLeftEmission, new GUIContent ("   Emission Mask"));
+						TextureField (textureLeftEmission, "   Emission Mask");
 					}
-					EditorGUILayout.PropertyField (textureLeftNRM, new GUIContent ("   Normal Map"));
-					EditorGUILayout.PropertyField (textureLeftDISP, new GUIContent ("   Displacement Map"));
+					TextureField (textureLeftNRM, "   Normal Map");
+					TextureField (textureLeftDISP, "   Displacement Map");
 				}
 				EditorGUILayout.PropertyField (placeFacingPlayer);
 				EditorGUILayout.PropertyField (allowsTextureRotation, new GUIContent ("Texture Rotation", "Allows texture rotation by using VoxelRotateTextures and similar methods."));
@@ -256,7 +265,7 @@ namespace VoxelPlay {
 				}
 				break;
 			case (int)RenderType.CutoutCross:
-				EditorGUILayout.PropertyField (textureSide, new GUIContent ("Texture"));
+				TextureField (textureSide, "Texture");
 				break;
 			}
 			if (renderType.intValue == (int)RenderType.Cutout || renderType.intValue == (int)RenderType.CutoutCross) {
@@ -295,6 +304,7 @@ namespace VoxelPlay {
 				if (canBeCollected.boolValue) {
 					EditorGUILayout.PropertyField (dropItem);
 				}
+				EditorGUILayout.PropertyField (icon);
 				EditorGUILayout.PropertyField (promotesTo);
 			}
 
@@ -332,6 +342,22 @@ namespace VoxelPlay {
 
 		}
 
+		void TextureField (SerializedProperty texture, string label = null, string tooltip = null) {
+			EditorGUI.BeginChangeCheck ();
+			if (label != null) {
+				EditorGUILayout.PropertyField (texture, new GUIContent (label, tooltip));
+			} else {
+				EditorGUILayout.PropertyField (texture);
+			}
+
+			if (EditorGUI.EndChangeCheck ()) {
+				if (texture.objectReferenceValue != null) {
+					Texture textureAsset = (Texture)texture.objectReferenceValue;
+					VoxelPlayEditorCommons.CheckImportSettings (textureAsset);
+				}
+			}
+		}
+
 		VoxelPlayEnvironment env {
 			get {
 				if (_env == null) {
@@ -351,7 +377,6 @@ namespace VoxelPlay {
 				}
 			}
 		}
-				
 
 	}
 

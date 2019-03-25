@@ -493,6 +493,9 @@ MonoBehaviour:
   layerParticles: 2
   layerVoxels: 1
   enableLoadingPanel: 1
+  loadingText: Initializing...
+  initialWaitTime: 0
+  initialWaitText: Loading World...
   loadSavedGame: 0
   saveFilename: save0001
   globalIllumination: 1
@@ -518,6 +521,7 @@ MonoBehaviour:
   _visibleChunksDistance: 10
   adjustCameraFarClip: 1
   useGeometryShaders: 1
+  usePixelLights: 1
   enableShadows: 1
   shadowsOnWater: 0
   forceChunkDistance: 4
@@ -526,10 +530,10 @@ MonoBehaviour:
   maxTreesPerFrame: 10
   maxBushesPerFrame: 10
   multiThreadGeneration: 1
-  onlyGenerateInFrustum: 1
   onlyRenderInFrustum: 1
   enableColliders: 1
   enableNavMesh: 0
+  hideChunksInHierarchy: 1
   enableTrees: 1
   denseTrees: 1
   enableVegetation: 1
@@ -2912,10 +2916,10 @@ MonoBehaviour:
   limitBounds:
     m_Center: {x: 0, y: 0, z: 0}
     m_Extent: {x: 0, y: 0, z: 0}
-  crosshairEnabled: 0
+  crosshairEnabled: 1
   crosshairScale: 0.1
-  crosshairOnTargetAnimationSpeed: 0.75
-  crosshairOnTargetAnimationScale: 0.2
+  targetAnimationSpeed: 0.75
+  targetAnimationScale: 0.2
   crosshairOnTargetColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   crosshairNormalColor: {r: 1, g: 1, b: 1, a: 1}
   changeOnBlock: 1
@@ -2923,6 +2927,7 @@ MonoBehaviour:
   voxelHighlight: 1
   voxelHighlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   voxelHighlightEdge: 5
+  useThirdPartyController: 0
   m_Camera: {fileID: 2094815561}
   cameraOrbitSpeed: 1
   cameraDistance: 15
@@ -2944,6 +2949,7 @@ MonoBehaviour:
   m_AnimSpeedMultiplier: 1
   m_GroundCheckDistance: 0.3
   attackAnimationState: NormalAttack01_SwordShield
+  _characterHeight: 1.8
 --- !u!114 &1651545690
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2963,6 +2969,10 @@ MonoBehaviour:
   hitDamage: 10
   hitRange: 3
   hitDamageRadius: 1
+  bareHandsHitDelay: 0.2
+  bareHandsHitDamage: 3
+  bareHandsHitRange: 5
+  bareHandsHitDamageRadius: 1
   playerItems: []
 --- !u!136 &1651545691
 CapsuleCollider:
@@ -3736,7 +3746,7 @@ Camera:
     width: 1
     height: 1
   near clip plane: 0.3
-  far clip plane: 1000
+  far clip plane: 160
   field of view: 60
   orthographic: 0
   orthographic size: 5

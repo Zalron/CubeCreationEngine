@@ -146,23 +146,20 @@ namespace VoxelPlay {
 				int voxelIndex;
 
 				if (GetVoxelIndex (pos, out chunk, out voxelIndex)) {
-					if (voxelIndex < 0 || voxelIndex >= chunk.voxels.Length) {
-					}
-					if (chunk.voxels [voxelIndex].typeIndex < 0 || chunk.voxels [voxelIndex].typeIndex >= voxelDefinitions.Length) {
-					}
 					if (!chunk.modified && (chunk.voxels [voxelIndex].opaque < FULL_OPAQUE || voxelDefinitions [chunk.voxels [voxelIndex].typeIndex].renderType == RenderType.CutoutCross)) {
-						chunk.voxels [voxelIndex].Set (tree.bits [b].voxelDefinition ?? defaultVoxel, tree.bits [b].colorOrDefault);
+						VoxelDefinition treeVoxel = tree.bits [b].voxelDefinition ?? defaultVoxel;
+						chunk.voxels [voxelIndex].Set (treeVoxel, tree.bits [b].finalColor);
 						if (py == 0) {
 							// fills one voxel beneath with tree voxel to avoid the issue of having some trees floating on some edges/corners
 							if (voxelIndex >= ONE_Y_ROW) {
 								if (chunk.voxels [voxelIndex - ONE_Y_ROW].hasContent != 1) {
-									chunk.voxels [voxelIndex - ONE_Y_ROW].Set (tree.bits [b].voxelDefinition ?? defaultVoxel, tree.bits [b].colorOrDefault);
+									chunk.voxels [voxelIndex - ONE_Y_ROW].Set (treeVoxel, tree.bits [b].finalColor);
 								}
 							} else {
 								VoxelChunk bottom = chunk.bottom;
 								if (bottom != null && !bottom.modified) {
 									if (bottom.voxels [voxelIndex + 15 * ONE_Y_ROW].hasContent != 1) {
-										chunk.voxels [voxelIndex + 15 * ONE_Y_ROW].Set (tree.bits [b].voxelDefinition ?? defaultVoxel, tree.bits [b].colorOrDefault);
+										chunk.voxels [voxelIndex + 15 * ONE_Y_ROW].Set (treeVoxel, tree.bits [b].finalColor);
 										if (!treeChunkRefreshRequests.Contains (bottom))
 											treeChunkRefreshRequests.Add (bottom);
 									}

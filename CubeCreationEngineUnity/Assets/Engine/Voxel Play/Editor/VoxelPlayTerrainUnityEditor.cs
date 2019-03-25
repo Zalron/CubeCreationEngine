@@ -12,13 +12,14 @@ namespace VoxelPlay {
 	public class VoxelPlayTerrainUnityEditor : Editor {
 
 		Color titleColor;
-		static GUIStyle titleLabelStyle, boxStyle;
+		static GUIStyle titleLabelStyle, boxStyle, sectionHeaderStyle;
 		UnityTerrainGenerator tg;
 		int terrainTextureSize = 16;
 		int treeTextureSize = 64;
 		int vegetationTextureSize = 64;
 		float frondDensity = 0.5f;
 		bool cleanFolders;
+        bool expandTerrainTextures, expandTrees, expandVegetation;
 
 		[Range (16, 256)]
 		int thumbnailSize = 104;
@@ -75,8 +76,12 @@ namespace VoxelPlay {
 			if (boxStyle == null) {
 				boxStyle = new GUIStyle (GUI.skin.box);
 			}
+            if (sectionHeaderStyle == null) {
+                sectionHeaderStyle = new GUIStyle(EditorStyles.foldout);
+            }
+            sectionHeaderStyle.SetFoldoutColor();
 
-			EditorGUILayout.BeginHorizontal ();
+            EditorGUILayout.BeginHorizontal ();
 			TerrainData prevTD = (TerrainData)terrainData.objectReferenceValue;
 			EditorGUILayout.PropertyField (terrainData);
 			TerrainData td = (TerrainData)terrainData.objectReferenceValue;
@@ -98,8 +103,9 @@ namespace VoxelPlay {
 				thumbnailSize = EditorGUILayout.IntSlider (thumbnailSize, 16, 256);
 				EditorGUILayout.EndHorizontal ();
 				EditorGUILayout.Separator ();
-				EditorGUILayout.LabelField ("Terrain Textures", titleLabelStyle);
-				EditorGUILayout.BeginHorizontal ();
+                expandTerrainTextures = EditorGUILayout.Foldout(expandTerrainTextures, new GUIContent("Terrain Textures"), true, sectionHeaderStyle);
+                if (expandTerrainTextures) {
+                    EditorGUILayout.BeginHorizontal();
 				EditorGUILayout.LabelField ("Texture Size", GUILayout.Width (EditorGUIUtility.labelWidth));
 				terrainTextureSize = EditorGUILayout.IntField (terrainTextureSize);
 				EditorGUILayout.EndHorizontal ();
@@ -160,12 +166,15 @@ namespace VoxelPlay {
 					} else if ((tg.splatSettings [k].top == null || tg.splatSettings [k].dirt == null) && tg.splatSettings [k].action == UnityTerrainGenerator.TerrainResourceAction.Assigned) {
 						needAssign = true;
 					}
-					EditorGUILayout.Separator ();
-				}
+                        EditorGUILayout.Separator();
+                    }
+                }
+
 				EditorGUILayout.Separator ();
-				EditorGUILayout.LabelField ("Trees", titleLabelStyle);
-				EditorGUILayout.BeginHorizontal ();
-				EditorGUILayout.LabelField ("Texture Size", GUILayout.Width (EditorGUIUtility.labelWidth));
+                expandTrees = EditorGUILayout.Foldout(expandTrees, new GUIContent("Trees"), true, sectionHeaderStyle);
+                if (expandTrees) {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField("Texture Size", GUILayout.Width(EditorGUIUtility.labelWidth));
 				treeTextureSize = EditorGUILayout.IntField (treeTextureSize);
 				EditorGUILayout.EndHorizontal ();
 				EditorGUILayout.BeginHorizontal ();
@@ -199,16 +208,19 @@ namespace VoxelPlay {
 						allIgnored = false;
 					if (tg.treeSettings [k].action == UnityTerrainGenerator.TerrainResourceAction.Create) {
 						needCreate = true;
-					} else if (tg.treeSettings [k].md == null && tg.treeSettings [k].action == UnityTerrainGenerator.TerrainResourceAction.Assigned) {
-						needAssign = true;
-					}
-					EditorGUILayout.Separator ();
-				}
-				EditorGUILayout.Separator ();
-				EditorGUILayout.LabelField ("Vegetation", titleLabelStyle);
-				EditorGUILayout.PropertyField (vegetationDensity);
-				EditorGUILayout.BeginHorizontal ();
-				EditorGUILayout.LabelField ("Texture Size", GUILayout.Width (EditorGUIUtility.labelWidth));
+                        } else if (tg.treeSettings[k].md == null && tg.treeSettings[k].action == UnityTerrainGenerator.TerrainResourceAction.Assigned) {
+                            needAssign = true;
+                        }
+                        EditorGUILayout.Separator();
+                    }
+                }
+
+                EditorGUILayout.Separator();
+                expandVegetation = EditorGUILayout.Foldout(expandVegetation, new GUIContent("Vegetation"), true, sectionHeaderStyle);
+                if (expandVegetation) {
+                    EditorGUILayout.PropertyField(vegetationDensity);
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField("Texture Size", GUILayout.Width(EditorGUIUtility.labelWidth));
 				vegetationTextureSize = EditorGUILayout.IntField (vegetationTextureSize);
 				EditorGUILayout.EndHorizontal ();
 				for (int k = 0; k < tg.terrainData.detailPrototypes.Length; k++) {
@@ -231,10 +243,11 @@ namespace VoxelPlay {
 					if (tg.detailSettings [k].action == UnityTerrainGenerator.TerrainResourceAction.Create) {
 						needCreate = true;
 					} else if (tg.detailSettings [k].vd == null && tg.detailSettings [k].action == UnityTerrainGenerator.TerrainResourceAction.Assigned) {
-						needAssign = true;
-					}
-					EditorGUILayout.Separator ();
-				}
+                            needAssign = true;
+                        }
+                        EditorGUILayout.Separator();
+                    }
+                }
 			}
 			EditorGUILayout.Separator ();
 			if (!allIgnored) {
